@@ -67,8 +67,24 @@ ais/static/...
 logs/collector.log   logs/stats.jsonl
 ```
 
-For multi-week collection a small Linux VM can be used instead:
-[scripts/cableguard-collector.service](scripts/cableguard-collector.service).
+### Running on a cloud VM (Oracle Cloud Always Free)
+
+For multi-week collection with the laptop switched off, the collector runs on a small
+Linux VM (Ubuntu 24.04). It only makes outbound connections, so no inbound port other than
+SSH is needed.
+
+```bash
+git clone git@github.com:<owner>/subsea-cable-guard.git && cd subsea-cable-guard
+cp .env.example .env && nano .env      # add AISSTREAM_API_KEY
+bash scripts/setup_vm.sh               # uv, venv, swap if <2 GB RAM, tests, systemd service
+```
+
+Finished daily files are copied to the laptop with
+`.\scripts\pull_from_vm.ps1 -VmHost ubuntu@<ip> -Key <private key>` (only new files).
+
+Caveat: Oracle may reclaim Always Free instances that stay idle (CPU p95, network and, for
+A1, memory all below 20 % over 7 days). The collector is light, so the data is pulled to the
+laptop regularly and the heartbeat log shows any interruption.
 
 ## Documentation
 

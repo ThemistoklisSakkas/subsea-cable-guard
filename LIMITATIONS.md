@@ -18,3 +18,7 @@
 - **Hard kill** (power loss, Task Manager) loses up to one flush interval (60 s) of data.
 - **Raw layer.** Values are stored as broadcast (e.g. heading 511, lat 91). Spoofed or erroneous
   positions are not filtered at this stage.
+- **Cloud VM reclamation.** Oracle Always Free instances that stay idle for 7 days (CPU p95,
+  network and - on A1 - memory all below 20 %) may be reclaimed. The collector is deliberately
+  light, so this is a real risk; mitigated by regular pulls to the laptop. We do not generate
+  artificial load to avoid it.
