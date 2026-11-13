@@ -1,0 +1,24 @@
+# Secrets
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Data (licensed / large) - never committed
+data/*
+!data/.gitkeep
+
+# Eastern Mediterranean case study: data, results, figures, logs.
+# Kept private until the owner decides otherwise.
+private/*
+!private/.gitkeep
+
+# Local outputs
+outputs/
+*.parquet
+*.log

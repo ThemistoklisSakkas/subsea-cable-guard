@@ -1,0 +1,41 @@
+# All regions, thresholds and paths live here. Code reads nothing hard-coded.
+seed: 42
+
+paths:
+  data: data                 # public-safe inputs (Danish AIS, EMODnet, GEBCO)
+  private: private           # Eastern Med case study - git-ignored
+
+regions:
+  denmark:
+    # Development region (Danish Maritime Authority historical AIS)
+    bbox: {lat_min: 53.5, lat_max: 58.5, lon_min: 6.0, lon_max: 16.5}
+    metric_crs: "EPSG:25832"          # ETRS89 / UTM 32N
+    # Existing DMA data from the previous project (not duplicated)
+    ais_dir: ../maritime-ais-gnss/data
+    private: false
+  eastmed:
+    # Case-study region: Ionian, Aegean, Crete, Cyprus, Levantine basin, Dardanelles
+    bbox: {lat_min: 31.5, lat_max: 41.5, lon_min: 19.0, lon_max: 36.5}
+    # Region spans UTM zones 34-36: use one equal-area projection centred on the region
+    metric_crs: "+proj=laea +lat_0=36 +lon_0=28 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs"
+    private: true
+
+collector:
+  region: eastmed
+  url: wss://stream.aisstream.io/v0/stream
+  message_types:
+    - PositionReport                 # Class A (types 1-3)
+    - StandardClassBPositionReport   # Class B (type 18)
+    - ExtendedClassBPositionReport   # Class B extended (type 19)
+    - ShipStaticData                 # Class A static/voyage (type 5)
+    - StaticDataReport               # Class B static (type 24)
+  out_subdir: eastmed/ais            # under paths.private
+  log_subdir: eastmed/logs           # under paths.private
+  flush_interval_s: 60               # max data lost on a hard kill
+  flush_max_rows: 50000
+  stats_interval_s: 300              # heartbeat line every 5 min
+  idle_timeout_s: 90                 # no message for this long -> reconnect
+  subscribe_timeout_s: 3             # aisstream closes if no subscription within 3 s
+  backoff_initial_s: 2
+  backoff_max_s: 300
+  lock_port: 47613                   # single-instance guard (localhost only)

@@ -1,0 +1,20 @@
+# systemd unit for running the collector on a small Linux VM.
+# Install (adjust User and paths):
+#   sudo cp scripts/cableguard-collector.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now cableguard-collector
+#   journalctl -u cableguard-collector -f        # live log
+[Unit]
+Description=Subsea Cable Guard AIS collector (aisstream.io)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=cableguard
+WorkingDirectory=/home/cableguard/subsea-cable-guard
+ExecStart=/home/cableguard/subsea-cable-guard/.venv/bin/python -m cableguard collect
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
