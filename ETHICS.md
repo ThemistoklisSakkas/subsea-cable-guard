@@ -10,3 +10,7 @@
 4. **The Eastern Mediterranean case study is private.** Its data, results and figures live in
    `private/`, which is git-ignored, until the owner decides otherwise.
 5. **Data minimisation.** Only the AIS fields needed for the analysis are stored.
+6. **Case details are internal.** The `cases` command hides MMSIs, but date + ship type +
+   length + asset can still single out a vessel to anyone with AIS access. Its output and
+   per-case explanations are for internal review only - never in public outputs or
+   screenshots; public material uses aggregated tables and synthetic examples.
