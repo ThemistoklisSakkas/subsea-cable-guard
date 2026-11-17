@@ -163,3 +163,50 @@ def exposure_scatter(visits: pl.DataFrame, buffer_nm: float, out: Path,
     fig.savefig(out, bbox_inches="tight", facecolor=SURFACE)
     plt.close(fig)
     return out
+
+
+RULE_LABEL = {"loiter": "Loiter", "anchor_drag": "Anchor-drag signature",
+              "ais_gap": "AIS gap near asset", "repeated_passes": "Repeated passes"}
+
+
+def cases_figure(cases: pl.DataFrame, threshold: float, out: Path) -> Path:
+    """Left: case score distribution with the flag threshold. Right: flagged cases per rule."""
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4), dpi=150, facecolor=SURFACE,
+                                 gridspec_kw={"width_ratios": [1.3, 1]})
+    for ax in (a1, a2):
+        ax.set_facecolor(SURFACE)
+        ax.tick_params(colors=MUTED, labelsize=8)
+        for s in ("top", "right"):
+            ax.spines[s].set_visible(False)
+    scores = cases["case_score"].to_numpy() if cases.height else np.array([])
+    a1.hist(scores, bins=np.linspace(0, 1, 21), color="#2a78d6", edgecolor=SURFACE, lw=2)
+    a1.axvline(threshold, color=INK_2, ls="--", lw=1)
+    n_flag = int((scores >= threshold).sum())
+    a1.text(threshold + 0.01, a1.get_ylim()[1] * 0.9,
+            f"flag threshold {threshold:g}\n{n_flag:,} of {len(scores):,} cases",
+            color=INK_2, fontsize=8, va="top")
+    a1.set_xlabel("Case score (after context)", color=INK_2)
+    a1.set_ylabel("Cases (log scale)", color=INK_2)
+    a1.set_yscale("log")
+    a1.set_title("Case scores", loc="left", color=INK, fontsize=11)
+    a1.grid(axis="y", color="#e9e8e4", lw=0.6)
+
+    flagged = cases.filter(pl.col("flagged")) if cases.height else cases
+    counts = {r: (flagged["rules"].list.contains(r).sum() if flagged.height else 0)
+              for r in RULE_LABEL}
+    labels = [RULE_LABEL[r] for r in counts]
+    vals = list(counts.values())
+    y = np.arange(len(labels))
+    a2.barh(y, vals, color="#2a78d6", height=0.6)
+    for yi, v in zip(y, vals, strict=True):
+        a2.text(v, yi, f" {v:,}", va="center", color=INK, fontsize=8)
+    a2.set_yticks(y, labels, color=INK, fontsize=9)
+    a2.invert_yaxis()
+    a2.set_xlabel("Flagged cases involving the rule", color=INK_2)
+    a2.set_title("What triggered flagged cases", loc="left", color=INK, fontsize=11)
+    fig.text(0.01, -0.03, "A case can involve several rules. Flagged for review only; "
+             "aggregated, no vessel identities.", color=MUTED, fontsize=7)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, bbox_inches="tight", facecolor=SURFACE)
+    plt.close(fig)
+    return out

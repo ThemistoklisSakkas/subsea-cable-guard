@@ -47,3 +47,19 @@
 - **Depth** is sampled once per visit (median position) from a ~460 m grid; steep slopes near
   cables are smoothed.
 - **Simplified geometry** (<= 10 m deviation) is used for distance queries.
+
+## Risk rules (Phase 3)
+
+- **Weights are expert choices, not learned.** Context factors and rule scores are explicit and
+  explained to the operator, but untuned; Phase 4 measures detection and false-alarm rates
+  and tunes them. Operator load is currently about 60 flagged cases per day for the whole
+  Danish box.
+- **Legitimate work is not known.** Permitted works (dredging, cable repair, wind-farm
+  service) are not in the data. Dredgers are deliberately not down-weighted, because
+  dredging near cables is itself a known cause of damage; wind-farm work is down-weighted only
+  inside farms in production or construction.
+- **Ports from the World Port Index miss small marinas**; routine anchorage cells (>= 3 vessels
+  anchored or moored) cover many of them.
+- **AIS gaps** come from the previous project's classification (2 h minimum, coverage test);
+  shorter silences are not seen.
+- **Explanations** name assets (public infrastructure names) but never vessel names.

@@ -14,7 +14,7 @@ transferred to the Aegean and Eastern Mediterranean as a case study.
 | 0 | Real-time AIS collector (aisstream.io -> daily Parquet) | code done; deployment pending |
 | 1 | Infrastructure layer (EMODnet + OSM cables/pipelines, buffers, density map) | Denmark done; Eastern Med pending |
 | 2 | Exposure per vessel track | Denmark done; Eastern Med pending |
-| 3 | Rule-based risk behaviours + explainable score | - |
+| 3 | Rule-based risk behaviours + explainable score | Denmark done (thresholds untuned) |
 | 4 | Evaluation without labels (synthetic injection, false-alarm rate) | - |
 | 5 | Optional unsupervised ML comparison | - |
 | 6 | Regional transfer + receiver-coverage model | - |
@@ -126,6 +126,27 @@ laptop regularly and the heartbeat log shows any interruption.
   fixes went from >10 min to ~100 s with identical results.
 - Per-visit and per-track tables contain MMSIs and stay in `data/` (git-ignored); only
   aggregated tables are written to `outputs/`.
+
+## Phase 3 - Explainable risk rules
+
+```powershell
+.venv\Scripts\python.exe -m cableguard phase3 --region denmark
+```
+
+Rules run on visits of the 1 nm buffer (the narrowest width every source supports):
+
+| Rule | Fires when | Supporting indicators (raise the score) |
+|---|---|---|
+| R1 loiter | >= 20 min at <= 3 kn | longer stay |
+| R2 anchor-drag signature | 1-6 kn, steady (SOG IQR <= 2 kn), >= 20 min | status *at anchor* while moving; heading/COG difference >= 20 deg; slowed >= 4 kn in the 30 min before entry; moving along the asset |
+| R3 AIS gap | a *dark* gap (good receiver coverage, not in port) starts or ends near an asset | reappeared elsewhere; both ends near |
+| R4 repeated passes | >= 3 slow passes over the same asset within 24 h (scheduled ferries exempt) | each extra pass |
+
+Each raw score is multiplied by a **context factor** = ship type x length x depth x zone
+(port, routine anchorage, operating wind farm; the zone factor depends on the rule).
+Alerts of one vessel, asset and day form a **case**: score = 1 - prod(1 - alert score),
+flagged at >= 0.5. Every case carries a plain-language explanation of each alert and of
+every context factor. All weights are in `config/default.yaml`; Phase 4 tunes them.
 
 ## Documentation
 

@@ -116,3 +116,40 @@ Fix during this phase: depth on land cells was stored as NaN, which biases media
 it is now null and reported as `share_no_depth` (aggregates recomputed from the saved visits).
 
 Figure: `outputs/denmark/figures/phase2_visits_1nm.png`.
+
+## Phase 3 - Explainable risk rules
+
+### Denmark (run 2026-11-17, ~20 s; thresholds untuned)
+
+Rules on 40,569 visits of the 1 nm buffer; 5,209 anchor-drag candidates got the extra
+context pass (speed before entry, *at anchor* while moving, SOG spread). Tests: 89 passed.
+
+| Rule | Alerts | Median raw score | Median after context | Alerts >= 0.5 |
+|---|---|---|---|---|
+| Loiter | 5,833 | 1.0 | 0.0 | 237 |
+| Anchor-drag signature | 3,735 | 0.4 | 0.02 | 38 |
+| AIS gap near asset | 382 | 0.8 | 0.05 | 1 |
+| Repeated passes | 1,184 | 0.6 | 0.04 | 37 |
+
+(`outputs/denmark/tables/alerts_by_rule.csv` holds the exact columns.)
+
+AIS gaps (>= 2 h) with an end within 1 nm of an asset: 1,245 in port/anchorage,
+545 with low receiver coverage, **382 dark** (coverage good, not in port). Only the dark ones
+become alerts: 70 % of silences near infrastructure have an innocent explanation.
+
+Cases: 6,870 (vessel x asset x day); **301 flagged** (score >= 0.5) involving 109 vessels,
+about 60 per day. Flagged cases by triggering rule: loiter 259, repeated passes 154,
+anchor-drag signature 140, AIS gap 10 (a case can involve several rules).
+
+What changed during the phase:
+- First run: 327 flagged cases; 69 of them lay inside wind-farm polygons, mostly service
+  vessels on inter-array cables. Adding an *operating wind farm* zone (production or
+  construction only) reduced this to 301.
+- Context suppresses most raw alerts: 8,022 of 11,134 end below 0.05 (leisure craft, ports,
+  anchorages, deep water).
+
+Example of a top case (vessel identity removed): tanker, 244 m, 3.1 h at 1.6 kn within 2 m of a
+power cable, moving along it (10 deg), heading 43 deg off course, slowed from 11.6 kn before
+entry, depth 37 m, outside ports and anchorages - raw and context scores 1.0.
+
+Figure: `outputs/denmark/figures/phase3_cases.png`.

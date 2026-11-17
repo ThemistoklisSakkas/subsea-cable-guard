@@ -128,6 +128,8 @@ def fetch_all(infra_cfg: dict[str, Any], bbox: BBox, out_dir: Path) -> list[Path
     em = infra_cfg["sources"]["emodnet"]
     for layer in em["layers"]:
         paths.append(fetch_emodnet(em["url"], layer, bbox, out_dir))
+    paths.append(fetch_emodnet(em["url"], infra_cfg["sources"]["windfarms"]["layer"], bbox,
+                               out_dir))
     osm = infra_cfg["sources"]["osm"]
     paths.append(fetch_osm([osm["url"], osm["fallback_url"]], bbox, osm["timeout_s"], out_dir))
     return paths

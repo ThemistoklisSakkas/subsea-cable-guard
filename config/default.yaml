@@ -16,6 +16,10 @@ regions:
     # (2025-06-02..06). Read in place, not duplicated.
     trajectories_dir: ../maritime-ais-gnss/data/processed/trajectories
     vessels: ../maritime-ais-gnss/data/processed/vessels.parquet
+    # Context layers from the previous project (same data, same 5 days):
+    ports: ../maritime-ais-gnss/data/processed/zones/ports.parquet           # World Port Index
+    anchorage_cells: ../maritime-ais-gnss/data/processed/zones/anchorage_cells.parquet
+    ais_gaps: ../maritime-ais-gnss/data/processed/dark/gaps.parquet        # classified silences
     private: false
   eastmed:
     # Case-study region: Ionian, Aegean, Crete, Cyprus, Levantine basin, Dardanelles
@@ -70,6 +74,9 @@ infrastructure:
         maltacables: telecom
         cicacables: telecom
         ukfibrecables: telecom
+    windfarms:               # context layer (not infrastructure geometry for buffers)
+      layer: windfarmspoly
+      statuses: ["Production", "Construction"]   # where service vessels routinely work
     osm:
       url: https://overpass-api.de/api/interpreter
       fallback_url: https://overpass.kumi.systems/api/interpreter
@@ -100,3 +107,60 @@ bathymetry:
   scale_factor: 0.25              # 1/16 arc-min native -> ~1/4 arc-min (~460 m) is enough here
   tile_deg: 2.5                   # request the region in tiles to stay below server limits
   licence: CC BY 4.0
+
+# ---------------------------------------------------------------- Phase 3: risk rules
+rules:
+  alert_buffer_nm: 1.0          # rules run on visits of this buffer (OSM routes need >= 1 nm)
+  anchorage_cell_deg: 0.02      # grid of the anchorage cells (as built in the previous project)
+  max_drag_depth_m: 150         # deeper than this an anchor is very unlikely to reach a cable
+  flag_threshold: 0.5           # a case at or above this score is flagged for review
+  loiter:                       # R1
+    min_duration_min: 20
+    max_sog_kn: 3.0
+    full_score_duration_min: 120  # score rises linearly from 0.4 to 1.0 up to this duration
+  anchor_drag:                  # R2
+    min_sog_kn: 1.0
+    max_sog_kn: 6.0
+    min_duration_min: 20
+    max_sog_iqr_kn: 2.0         # "steady": interquartile range of SOG within the visit
+    base_score: 0.4
+    indicator_score: 0.2        # added per supporting indicator below
+    anchored_moving_min_frac: 0.2   # status "at anchor" while making 1+ kn
+    hdg_cog_min_deg: 20             # heading differs from course: sideways drift
+    speed_drop_min_kn: 4.0          # median speed 30 min before entry minus speed inside
+    along_cable_max_deg: 30         # moving along the asset
+    pre_entry_window_min: 30
+  ais_gap:                      # R3 (gaps classified 'dark' = good coverage, not in port)
+    base_score: 0.6
+    moved_bonus: 0.2
+    both_ends_bonus: 0.2
+  repeated_passes:              # R4
+    min_passes: 3
+    window_h: 24
+    max_sog_kn: 8.0
+    exempt_ship_types: ["Passenger", "HSC"]   # scheduled ferries cross many times a day
+    base_score: 0.5
+    per_extra_pass: 0.1
+    max_score: 0.9
+  context:                      # multiplied onto every rule score
+    ship_type:
+      Cargo: 1.0
+      Tanker: 1.0
+      Dredging: 0.9
+      Fishing: 0.8              # bottom trawls are a leading cause of cable faults
+      Tug: 0.8
+      Other: 0.8
+      Passenger: 0.6
+      HSC: 0.4
+      Pilot: 0.3
+      Pleasure: 0.2
+      Sailing: 0.2
+      default: 0.6
+    length_m: [[0, 30, 0.3], [30, 80, 0.7], [80, 10000, 1.0]]   # [from, to, factor]
+    length_unknown: 0.7
+    depth_m: [[0, 50, 1.0], [50, 150, 0.6], [150, 100000, 0.2]]
+    depth_unknown: 0.5          # mostly land cells = harbours on the bathymetry grid
+    in_port: {loiter: 0.0, anchor_drag: 0.3, ais_gap: 0.0, repeated_passes: 0.3}
+    in_anchorage: {loiter: 0.0, anchor_drag: 0.6, ais_gap: 0.5, repeated_passes: 0.6}
+    # Service and construction vessels work inside operating wind farms every day.
+    in_windfarm: {loiter: 0.2, anchor_drag: 0.5, ais_gap: 0.5, repeated_passes: 0.2}

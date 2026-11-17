@@ -20,6 +20,7 @@ class RegionPaths:
     infra: Path          # standardised layer, buffers
     exposure: Path       # per-visit / per-track tables (contain MMSIs: never published)
     bathymetry: Path
+    rules: Path          # alerts and cases (contain MMSIs: never published)
     tables: Path
     figures: Path
 
@@ -33,6 +34,9 @@ class Region:
     paths: RegionPaths
     trajectories_dir: Path | None
     vessels: Path | None
+    ports: Path | None = None
+    anchorage_cells: Path | None = None
+    ais_gaps: Path | None = None
 
 
 def get_region(cfg: dict[str, Any], name: str, root: Path = ROOT) -> Region:
@@ -49,11 +53,16 @@ def get_region(cfg: dict[str, Any], name: str, root: Path = ROOT) -> Region:
         infra=base_in / "infra",
         exposure=base_in / "exposure",
         bathymetry=base_in / "bathymetry",
+        rules=base_in / "rules",
         tables=base_out / "tables",
         figures=base_out / "figures",
     )
     traj = r.get("trajectories_dir")
     vessels = r.get("vessels")
+
+    def opt(key: str) -> Path | None:
+        return resolve(r[key], root) if r.get(key) else None
+
     return Region(
         name=name,
         bbox=BBox(**r["bbox"]),
@@ -62,4 +71,7 @@ def get_region(cfg: dict[str, Any], name: str, root: Path = ROOT) -> Region:
         paths=paths,
         trajectories_dir=resolve(traj, root) if traj else None,
         vessels=resolve(vessels, root) if vessels else None,
+        ports=opt("ports"),
+        anchorage_cells=opt("anchorage_cells"),
+        ais_gaps=opt("ais_gaps"),
     )
