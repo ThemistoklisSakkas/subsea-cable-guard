@@ -70,3 +70,17 @@ def test_share_inside_and_map_smoke(tmp_path):
     out = infrastructure_map(layer, buffers, grid, 1000, BB, CRS, "t", "a",
                              tmp_path / "m.png")
     assert out.exists() and out.stat().st_size > 10_000
+
+
+def test_land_is_clipped_before_projection():
+    """A continent-sized polygon must not produce infinite UTM coordinates."""
+    import numpy as np
+    import shapely
+    from shapely.geometry import Polygon
+
+    from cableguard.plots import land_in_frame
+    huge = Polygon([(-170, -10), (170, -10), (170, 80), (-170, 80)])
+    land = gpd.GeoDataFrame(geometry=[huge], crs=4326)
+    out = land_in_frame(land, BB, CRS)
+    assert np.isfinite(shapely.get_coordinates(out.geometry.values)).all()
+    assert len(out) == 1

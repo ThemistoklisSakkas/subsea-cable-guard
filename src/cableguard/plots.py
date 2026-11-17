@@ -31,6 +31,21 @@ MUTED = "#898781"
 LAND = "#e9e8e4"
 
 
+def land_in_frame(land: gpd.GeoDataFrame, bbox: BBox, crs: str,
+                  pad_deg: float = 1.0) -> gpd.GeoDataFrame:
+    """Clip land to the region in degrees BEFORE projecting.
+
+    Natural Earth polygons can span a continent; projecting all of Eurasia into a
+    UTM zone produces infinite coordinates far from the zone. Clipping first keeps
+    every vertex where the projection is valid.
+    """
+    window = box(bbox.lon_min - pad_deg, bbox.lat_min - pad_deg,
+                 bbox.lon_max + pad_deg, bbox.lat_max + pad_deg)
+    clipped = land.to_crs(4326).clip(window)
+    clipped = clipped[~clipped.geometry.is_empty]
+    return clipped.to_crs(crs)
+
+
 def grid_to_raster(grid: pl.DataFrame, cell_m: float, value: str):
     cx, cy, v = grid["cx"].to_numpy(), grid["cy"].to_numpy(), grid[value].to_numpy()
     x0, y0 = cx.min(), cy.min()
@@ -49,8 +64,11 @@ def infrastructure_map(layer: gpd.GeoDataFrame, buffers: gpd.GeoDataFrame,
     frame = gpd.GeoSeries([box(bbox.lon_min, bbox.lat_min, bbox.lon_max, bbox.lat_max)],
                           crs="EPSG:4326").to_crs(crs)
     if land_path and land_path.exists():
-        land = gpd.read_file(f"zip://{land_path}", bbox=tuple(frame.to_crs(4326).total_bounds))
-        land.to_crs(crs).clip(frame).plot(ax=ax, color=LAND, linewidth=0, zorder=1)
+        land = gpd.read_file(f"zip://{land_path}",
+                             bbox=(bbox.lon_min, bbox.lat_min, bbox.lon_max, bbox.lat_max))
+        land = land_in_frame(land, bbox, crs)
+        if not land.empty:
+            land.plot(ax=ax, color=LAND, linewidth=0, zorder=1)
 
     if grid.height:
         img, extent = grid_to_raster(grid, cell_m, "vessel_hours")
@@ -83,12 +101,16 @@ def infrastructure_map(layer: gpd.GeoDataFrame, buffers: gpd.GeoDataFrame,
     ax.set_ylim(miny, maxy)
     ax.set_xticks([])
     ax.set_yticks([])
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+    ax.set_aspect("equal")
     for s in ax.spines.values():
         s.set_visible(False)
     ax.legend(handles=handles, loc="upper right", frameon=True, facecolor=SURFACE,
               edgecolor=SURFACE, labelcolor=INK, fontsize=9)
     ax.set_title(title, loc="left", color=INK, fontsize=13, pad=10)
-    fig.text(0.01, 0.01, attribution, color=MUTED, fontsize=7, ha="left")
+    ax.text(0.0, -0.015, attribution, transform=ax.transAxes, color=MUTED, fontsize=7,
+            ha="left", va="top")
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out, bbox_inches="tight", facecolor=SURFACE)
     plt.close(fig)
