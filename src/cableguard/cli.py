@@ -21,24 +21,30 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("compact", help="merge finished days' part files into daily files")
     sub.add_parser("status", help="summarise collected data and the last heartbeat")
     for name, text in [("infra-fetch", "download cable/pipeline geometries for a region"),
-                       ("phase1", "build infrastructure layer, buffers, density map")]:
+                       ("phase1", "build infrastructure layer, buffers, density map"),
+                       ("bathy-fetch", "download EMODnet bathymetry for a region"),
+                       ("phase2", "exposure of every track to the infrastructure")]:
         sp = sub.add_parser(name, help=text)
         sp.add_argument("--region", required=True)
     args = ap.parse_args(argv)
 
     cfg = load_config(args.config)
 
-    if args.cmd in ("infra-fetch", "phase1"):
+    if args.cmd in ("infra-fetch", "phase1", "bathy-fetch", "phase2"):
         import json
 
-        from cableguard import phase1
+        from cableguard import phase1, phase2
         from cableguard.regions import get_region
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
         region = get_region(cfg, args.region)
         if args.cmd == "infra-fetch":
             phase1.fetch(cfg, region)
-        else:
+        elif args.cmd == "phase1":
             print(json.dumps(phase1.build(cfg, region), indent=2))
+        elif args.cmd == "bathy-fetch":
+            phase2.fetch_bathymetry(cfg, region)
+        else:
+            print(json.dumps(phase2.run(cfg, region), indent=2))
         return 0
 
     ccfg = collector_config(cfg)

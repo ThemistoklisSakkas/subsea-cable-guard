@@ -170,3 +170,30 @@ def test_read_emodnet_uses_feature_id_and_keeps_status_separate(tmp_path):
     assert set(g.source_id) == {"pipelines.18"}
     assert g.name.isna().all()                          # status is not used as a name
     assert set(g.status) == {"Active"}
+
+
+def test_split_lines_keeps_length_and_owner():
+    from cableguard.infra.buffers import split_lines
+    lines = np.array([LineString([(0, 0), (5_000, 0)]), LineString([(0, 0), (0, 300), (900, 300)])])
+    pieces, owner = split_lines(lines, 1_000)
+    import shapely
+    lengths = shapely.length(pieces)
+    assert lengths.max() <= 1_000 + 1e-6
+    assert lengths[owner == 0].sum() == pytest.approx(5_000)
+    assert lengths[owner == 1].sum() == pytest.approx(1_200)
+
+
+def test_pieced_index_gives_same_answers():
+    layer = _layer([("telecom", "emodnet", "surveyed", LineString([(0, 0), (10_000, 0)])),
+                    ("power", "osm", "community", LineString([(0, 5_000), (10_000, 5_000)]))])
+    x = np.array([5_000, 5_000, 5_000, 20_000, 9_999])
+    y = np.array([800, 1_200, 4_200, 0, -10])
+    a, b = InfraIndex(layer, MIN_BUF), InfraIndex(layer, MIN_BUF, max_piece_m=700)
+    for nm in (0.5, 1.0, 2.0):
+        assert a.inside(x, y, nm).tolist() == b.inside(x, y, nm).tolist()
+    pa, fa, da = a.nearest(x, y, 3_000)
+    pb, fb, db = b.nearest(x, y, 3_000)
+    _, ia = np.unique(pa, return_index=True)
+    _, ib = np.unique(pb, return_index=True)
+    assert fa[ia].tolist() == fb[ib].tolist()
+    assert np.allclose(da[ia], db[ib])

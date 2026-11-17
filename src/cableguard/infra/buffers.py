@@ -45,14 +45,44 @@ def build_buffers(layer: gpd.GeoDataFrame, buffers_nm: list[float],
     return gpd.GeoDataFrame(rows, geometry="geometry", crs=layer.crs)
 
 
+def split_lines(lines: np.ndarray, max_piece_m: float) -> tuple[np.ndarray, np.ndarray]:
+    """Break lines into straight 2-point pieces no longer than max_piece_m.
+
+    Returns (pieces, owner) where owner[k] is the index of the line piece k came from.
+    Short pieces have small bounding boxes, so a spatial index proposes only a few
+    candidates per query point instead of every long cable whose box covers it.
+    """
+    seg = shapely.segmentize(lines, max_piece_m)
+    coords, idx = shapely.get_coordinates(seg, return_index=True)
+    same = idx[1:] == idx[:-1]
+    a, b = coords[:-1][same], coords[1:][same]
+    pieces = shapely.linestrings(np.stack([a, b], axis=1))
+    return pieces, idx[:-1][same]
+
+
 class InfraIndex:
     """Nearest-infrastructure queries for points given in the layer's metric CRS."""
 
-    def __init__(self, layer: gpd.GeoDataFrame, min_buffer_nm: dict[str, float]):
+    def __init__(self, layer: gpd.GeoDataFrame, min_buffer_nm: dict[str, float],
+                 max_piece_m: float | None = None):
         self.layer = layer.reset_index(drop=True)
-        self.tree = STRtree(self.layer.geometry.values)
-        self.min_buffer_m = (self.layer["accuracy"].map(min_buffer_nm)
-                             .fillna(np.inf).to_numpy() * NM_M)
+        geoms = self.layer.geometry.values
+        if max_piece_m:
+            self.pieces, self.owner = split_lines(geoms, max_piece_m)
+        else:
+            self.pieces, self.owner = np.asarray(geoms), np.arange(len(geoms))
+        self.tree = STRtree(self.pieces)
+        feature_min_m = (self.layer["accuracy"].map(min_buffer_nm)
+                         .fillna(np.inf).to_numpy() * NM_M)
+        self.min_buffer_m = feature_min_m[self.owner]
+
+    def nearest_piece(self, x: np.ndarray, y: np.ndarray, max_distance_m: float
+                      ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """(point_idx, piece_idx, dist_m) for points within max_distance_m of any piece."""
+        pts = shapely.points(np.asarray(x), np.asarray(y))
+        (pi, ki), dist = self.tree.query_nearest(pts, max_distance=max_distance_m,
+                                                 return_distance=True)
+        return pi, ki, dist
 
     def nearest(self, x: np.ndarray, y: np.ndarray,
                 max_distance_m: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -60,17 +90,15 @@ class InfraIndex:
 
         Ties (equidistant lines) can return several rows for one point.
         """
-        pts = shapely.points(np.asarray(x), np.asarray(y))
-        (pi, fi), dist = self.tree.query_nearest(pts, max_distance=max_distance_m,
-                                                 return_distance=True)
-        return pi, fi, dist
+        pi, ki, dist = self.nearest_piece(x, y, max_distance_m)
+        return pi, self.owner[ki], dist
 
     def inside(self, x: np.ndarray, y: np.ndarray, buffer_nm: float) -> np.ndarray:
         """Boolean mask: point within buffer_nm of a line whose source supports that width."""
         d = buffer_nm * NM_M
         mask = np.zeros(len(x), dtype=bool)
         pts = shapely.points(np.asarray(x), np.asarray(y))
-        pi, fi = self.tree.query(pts, predicate="dwithin", distance=d)
-        ok = self.min_buffer_m[fi] <= d + 1e-6
+        pi, ki = self.tree.query(pts, predicate="dwithin", distance=d)
+        ok = self.min_buffer_m[ki] <= d + 1e-6
         mask[pi[ok]] = True
         return mask

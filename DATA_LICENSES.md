@@ -8,6 +8,7 @@
 | OpenStreetMap (Overpass API) submarine cables and pipelines | Infrastructure layer (community accuracy) | ODbL 1.0, attribution "(c) OpenStreetMap contributors"; derived databases must stay ODbL | No raw data; figures carry attribution |
 | Natural Earth 10 m land | Map background | Public domain | No |
 | TeleGeography Submarine Cable Map | Optional visual reference only | CC BY-NC-SA 3.0 (non-commercial) | No |
-| GEBCO gridded bathymetry | Optional water depth | GEBCO terms (public domain, attribution requested) | No |
+| EMODnet Bathymetry DTM (WCS `emodnet__mean`) | Water depth at each visit | CC BY 4.0 | No |
+| GEBCO gridded bathymetry | Not used (EMODnet Bathymetry covers both regions) | GEBCO terms | No |
 
 Every entry is re-checked when the source is first used in its phase.

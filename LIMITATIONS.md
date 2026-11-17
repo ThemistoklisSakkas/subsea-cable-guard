@@ -35,3 +35,15 @@
   Phase 3 decision.
 - **Density** uses AIS reception, so it shows where ships were *heard*: low values in areas of
   poor receiver coverage are not proof of low traffic.
+
+## Exposure (Phase 2)
+
+- **Grid north vs true north.** Cable direction is measured in the region's metric projection,
+  COG in true degrees; the difference (meridian convergence) is a few degrees at most and is
+  ignored.
+- **Loiter thresholds** (20 min, 3 kn) are a first, explainable choice; Phase 4 tunes them.
+- **Crossing detection** depends on reporting: a path that straddles a cable between two
+  distant fixes is counted as a crossing even if the ship turned in between.
+- **Depth** is sampled once per visit (median position) from a ~460 m grid; steep slopes near
+  cables are smoothed.
+- **Simplified geometry** (<= 10 m deviation) is used for distance queries.

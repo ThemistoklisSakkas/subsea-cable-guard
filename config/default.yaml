@@ -15,6 +15,7 @@ regions:
     # Existing DMA data, cleaned and segmented by the maritime-ais-gnss pipeline
     # (2025-06-02..06). Read in place, not duplicated.
     trajectories_dir: ../maritime-ais-gnss/data/processed/trajectories
+    vessels: ../maritime-ais-gnss/data/processed/vessels.parquet
     private: false
   eastmed:
     # Case-study region: Ionian, Aegean, Crete, Cyprus, Levantine basin, Dardanelles
@@ -80,3 +81,22 @@ infrastructure:
 density:
   cell_m: 1000            # grid cell size in the region's metric CRS
   max_dt_s: 600           # time between fixes credited to a cell is capped (gaps are not presence)
+
+# ---------------------------------------------------------------- Phase 2: exposure
+exposure:
+  # State vessels are outside the scope of this tool (ethics rule): excluded before analysis.
+  excluded_ship_types: ["Military", "Law enforcement", "SAR"]
+  anchored_statuses: ["At anchor", "Moored"]
+  loiter_min_duration_min: 20     # inside a buffer at least this long...
+  loiter_max_sog_kn: 3.0          # ...with median speed at or below this = loitering
+  cog_valid_min_sog_kn: 1.0       # below this, course over ground is noise
+  bearing_step_m: 50              # cable direction from +/- 50 m around the nearest point
+  simplify_m: 10                  # max line simplification error for the distance index
+  index_piece_m: 1000             # index lines as straight pieces of at most 1 km (speed)
+
+bathymetry:
+  url: https://ows.emodnet-bathymetry.eu/wcs
+  coverage: emodnet__mean         # EMODnet Bathymetry DTM, metres (negative = below sea level)
+  scale_factor: 0.25              # 1/16 arc-min native -> ~1/4 arc-min (~460 m) is enough here
+  tile_deg: 2.5                   # request the region in tiles to stay below server limits
+  licence: CC BY 4.0

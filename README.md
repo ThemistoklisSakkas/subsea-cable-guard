@@ -13,7 +13,7 @@ transferred to the Aegean and Eastern Mediterranean as a case study.
 |---|---|---|
 | 0 | Real-time AIS collector (aisstream.io -> daily Parquet) | code done; deployment pending |
 | 1 | Infrastructure layer (EMODnet + OSM cables/pipelines, buffers, density map) | Denmark done; Eastern Med pending |
-| 2 | Exposure per vessel track | - |
+| 2 | Exposure per vessel track | in progress (Denmark) |
 | 3 | Rule-based risk behaviours + explainable score | - |
 | 4 | Evaluation without labels (synthetic injection, false-alarm rate) | - |
 | 5 | Optional unsupervised ML comparison | - |
@@ -106,6 +106,26 @@ laptop regularly and the heartbeat log shows any interruption.
 - Traffic density is time-weighted (vessel-hours per 1 km cell): each fix is credited with the
   time since the previous fix of its track segment, capped at 10 minutes, so frequent
   reporters are not over-counted.
+
+## Phase 2 - Exposure of vessel tracks
+
+```powershell
+.venv\Scripts\python.exe -m cableguard bathy-fetch --region denmark   # EMODnet bathymetry (~460 m)
+.venv\Scripts\python.exe -m cableguard phase2 --region denmark        # visits, classes, tables
+```
+
+- Unit of analysis: a **visit** = consecutive fixes of one track segment inside one buffer
+  (asset type x width). Per visit: duration, speed statistics, minimum distance, the asset
+  feature, angle between course and cable (0 = along, 90 = across), heading/COG difference,
+  share of time with status *at anchor* or *moored*, longest reporting gap, water depth.
+- Classes: **loiter** (>= 20 min with median SOG <= 3 kn), **crossing** (path, extended by one
+  fix before and after, intersects the asset), **transit** (near but neither).
+- State vessels (military, law enforcement, SAR) are excluded before analysis.
+- Speed: lines are simplified (max 10 m deviation) and indexed as straight pieces of <= 1 km;
+  a prepared union polygon rejects fixes far from all infrastructure. One bucket of ~3.4 M
+  fixes went from >10 min to ~100 s with identical results.
+- Per-visit and per-track tables contain MMSIs and stay in `data/` (git-ignored); only
+  aggregated tables are written to `outputs/`.
 
 ## Documentation
 

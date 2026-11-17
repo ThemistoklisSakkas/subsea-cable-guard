@@ -18,6 +18,8 @@ from cableguard.config import ROOT, BBox, resolve
 class RegionPaths:
     infra_raw: Path      # downloaded source files, as received
     infra: Path          # standardised layer, buffers
+    exposure: Path       # per-visit / per-track tables (contain MMSIs: never published)
+    bathymetry: Path
     tables: Path
     figures: Path
 
@@ -30,6 +32,7 @@ class Region:
     private: bool
     paths: RegionPaths
     trajectories_dir: Path | None
+    vessels: Path | None
 
 
 def get_region(cfg: dict[str, Any], name: str, root: Path = ROOT) -> Region:
@@ -44,10 +47,13 @@ def get_region(cfg: dict[str, Any], name: str, root: Path = ROOT) -> Region:
     paths = RegionPaths(
         infra_raw=base_in / "infra" / "raw",
         infra=base_in / "infra",
+        exposure=base_in / "exposure",
+        bathymetry=base_in / "bathymetry",
         tables=base_out / "tables",
         figures=base_out / "figures",
     )
     traj = r.get("trajectories_dir")
+    vessels = r.get("vessels")
     return Region(
         name=name,
         bbox=BBox(**r["bbox"]),
@@ -55,4 +61,5 @@ def get_region(cfg: dict[str, Any], name: str, root: Path = ROOT) -> Region:
         private=private,
         paths=paths,
         trajectories_dir=resolve(traj, root) if traj else None,
+        vessels=resolve(vessels, root) if vessels else None,
     )

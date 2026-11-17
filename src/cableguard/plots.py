@@ -115,3 +115,51 @@ def infrastructure_map(layer: gpd.GeoDataFrame, buffers: gpd.GeoDataFrame,
     fig.savefig(out, bbox_inches="tight", facecolor=SURFACE)
     plt.close(fig)
     return out
+
+
+# Visit classes reuse categorical slots 1-3 in fixed order (a separate figure from the map).
+CLASS_STYLE = {
+    "crossing": {"color": "#2a78d6", "marker": "o", "label": "Crossing"},
+    "loiter": {"color": "#eb6834", "marker": "s", "label": "Loiter"},
+    "transit": {"color": "#1baf7a", "marker": "^", "label": "Transit (near, no crossing)"},
+}
+
+
+def exposure_scatter(visits: pl.DataFrame, buffer_nm: float, out: Path,
+                     loiter_min: float, loiter_sog: float) -> Path:
+    """Duration vs median speed of every visit, one panel per asset type."""
+    v = visits.filter(pl.col("buffer_nm") == buffer_nm)
+    assets = [a for a in ASSET_STYLE if a in set(v["asset_type"].to_list())]
+    fig, axes = plt.subplots(1, max(len(assets), 1), figsize=(5 * max(len(assets), 1), 4.5),
+                             dpi=150, sharey=True, facecolor=SURFACE)
+    axes = np.atleast_1d(axes)
+    for ax, asset in zip(axes, assets, strict=False):
+        ax.set_facecolor(SURFACE)
+        a = v.filter(pl.col("asset_type") == asset)
+        for cls, st in CLASS_STYLE.items():
+            c = a.filter(pl.col("visit_class") == cls)
+            dur = np.maximum(c["duration_s"].to_numpy() / 60, 0.1)
+            ax.scatter(dur, c["sog_median"].to_numpy(), s=4, alpha=0.35, color=st["color"],
+                       marker=st["marker"], linewidths=0,
+                       label=f"{st['label']} ({c.height:,})")
+        ax.axvline(loiter_min, color=MUTED, ls="--", lw=1)
+        ax.axhline(loiter_sog, color=MUTED, ls="--", lw=1)
+        ax.set_xscale("log")
+        ax.set_xlabel("Visit duration (min, log)", color=INK_2)
+        ax.set_title(f"{ASSET_STYLE[asset]['label']}s, {buffer_nm:g} nm buffer", loc="left",
+                     color=INK, fontsize=11)
+        ax.tick_params(colors=MUTED, labelsize=8)
+        ax.grid(color="#e9e8e4", lw=0.6)
+        for s in ("top", "right"):
+            ax.spines[s].set_visible(False)
+        leg = ax.legend(loc="upper right", fontsize=7, frameon=False, markerscale=3)
+        for t in leg.get_texts():
+            t.set_color(INK)
+    axes[0].set_ylabel("Median speed in visit (kn)", color=INK_2)
+    axes[0].set_ylim(0, 25)
+    fig.text(0.01, -0.02, f"Dashed lines: loiter thresholds ({loiter_min:g} min, "
+             f"{loiter_sog:g} kn). Aggregated; no vessel identities.", color=MUTED, fontsize=7)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, bbox_inches="tight", facecolor=SURFACE)
+    plt.close(fig)
+    return out
