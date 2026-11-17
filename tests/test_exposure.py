@@ -161,3 +161,16 @@ def test_sample_depth_positive_down_and_nan_on_land(tmp_path):
                                 np.array([55.75, 55.75, 55.25, 55.25, 55.0]))
     assert d[0] == 20 and d[2] == 35
     assert np.isnan(d[1]) and np.isnan(d[3]) and np.isnan(d[4])
+
+
+def test_aggregates_ignore_missing_depth(tmp_path):
+    from cableguard.phase2 import write_aggregates
+    vis = pl.DataFrame({
+        "mmsi": [1, 2, 3], "asset_type": ["power"] * 3, "buffer_nm": [1.0] * 3,
+        "visit_class": ["loiter"] * 3, "duration_s": [600.0, 1200.0, 1800.0],
+        "sog_median": [0.1, 0.2, 0.3], "depth_m": [10.0, 30.0, None], "ship_type": ["Cargo"] * 3,
+    })
+    write_aggregates(vis, tmp_path)
+    row = pl.read_csv(tmp_path / "exposure_by_class.csv").row(0, named=True)
+    assert row["median_depth_m"] == 20 and row["share_no_depth"] == pytest.approx(0.333)
+    assert "mmsi" not in pl.read_csv(tmp_path / "exposure_by_ship_type_1nm.csv").columns

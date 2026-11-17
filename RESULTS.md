@@ -65,3 +65,54 @@ Reading:
   (speed, loitering, anchor status), not on proximity alone.
 
 Figure: `outputs/denmark/figures/phase1_infrastructure_map.png`.
+
+## Phase 2 - Exposure of vessel tracks
+
+### Denmark (run 2026-11-17, ~22 min for 16 buckets)
+
+48,699,346 fixes analysed; 365 state vessels (military, law enforcement, SAR) excluded.
+4,713 vessels had at least one visit; 100,040 visits in total. Tests: 70 passed.
+
+Visits by buffer and class (all asset types):
+
+| Buffer | Crossing | Loiter | Transit |
+|---|---|---|---|
+| 0.5 nm | 11,131 | 1,003 | 2,172 |
+| 1 nm | 27,084 | 5,833 | 7,652 |
+| 2 nm | 23,362 | 9,010 | 12,793 |
+
+(Wider buffers merge neighbouring visits, so counts are not nested.)
+
+1 nm buffer, per asset type (median values):
+
+| Asset | Class | Visits | Vessels | Duration (min) | SOG (kn) | Depth (m) | No depth (land cell) |
+|---|---|---|---|---|---|---|---|
+| Telecom | crossing | 11,015 | 2,099 | 13.5 | 11.1 | see csv | |
+| Telecom | loiter | 1,429 | 449 | 96.0 | 0.0 | 13 | 39 % |
+| Power | crossing | 10,956 | 2,727 | 15.5 | 10.3 | | |
+| Power | loiter | 2,277 | 850 | 119.8 | 0.0 | 4 | 22 % |
+| Pipeline | crossing | 5,113 | 1,712 | 17.2 | 10.3 | | |
+| Pipeline | loiter | 2,127 | 778 | 169.2 | 0.0 | 2 | 37 % |
+
+Full table: `outputs/denmark/tables/exposure_by_class.csv`.
+
+Readings:
+- **Crossings behave as geometry predicts**: duration x speed is roughly constant (a 2 nm wide
+  band at ~10 kn takes ~12 min; observed medians 13-17 min, longer for oblique crossings).
+  This is a sanity check of the visit logic on real data.
+- **Most loiters are in harbours and marinas**: at 1 nm, 32 % of loiter visits sit on a land
+  cell of the ~460 m bathymetry grid and the remaining ones have a median depth of 3.2 m;
+  only 20 % carry an *at anchor / moored* status for most of the visit. Cables and pipelines
+  make landfall next to ports, so Phase 3 must exclude ports, marinas and routine anchorages.
+- **Leisure traffic dominates exposure time**: pleasure and sailing craft account for ~34,600
+  of the hours inside 1 nm (June data), cargo ~6,200, tankers ~1,600.
+- **An "anchor-drag-like" pattern is common in innocent traffic**: 821 visits (467 vessels)
+  at 1-6 kn, within 30 deg of the cable direction, for at least 20 min - mostly sailing and
+  pleasure craft. Speed and direction alone would flood the operator; ship type/size,
+  anchor status and context are needed (Phase 3).
+- 4.9 % of 1 nm visits consist of a single fix (vertical column at 0.1 min in the figure).
+
+Fix during this phase: depth on land cells was stored as NaN, which biases medians;
+it is now null and reported as `share_no_depth` (aggregates recomputed from the saved visits).
+
+Figure: `outputs/denmark/figures/phase2_visits_1nm.png`.

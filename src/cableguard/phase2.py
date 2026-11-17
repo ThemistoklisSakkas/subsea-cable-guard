@@ -51,8 +51,11 @@ def run(cfg: dict[str, Any], region: Region) -> dict[str, Any]:
         vis = vis.join(vessels.select("mmsi", "ship_type"), on="mmsi", how="left")
     depth_tif = paths.bathymetry / "depth.tif"
     if depth_tif.exists():
+        # NaN (land cell, e.g. a harbour on the ~460 m grid) becomes null, so that
+        # medians ignore it instead of sorting it as the largest value.
         vis = vis.with_columns(depth_m=pl.Series(bathymetry.sample_depth(
-            depth_tif, vis["lon_median"].to_numpy(), vis["lat_median"].to_numpy())))
+            depth_tif, vis["lon_median"].to_numpy(), vis["lat_median"].to_numpy()))
+            .fill_nan(None))
     else:
         log.warning("no bathymetry (run bathy-fetch): depth left empty")
         vis = vis.with_columns(depth_m=pl.lit(None, dtype=pl.Float64))
@@ -62,22 +65,7 @@ def run(cfg: dict[str, Any], region: Region) -> dict[str, Any]:
     tracks = track_summary(vis)
     tracks.write_parquet(paths.exposure / "tracks.parquet")
 
-    # ---- aggregated (publishable) tables: no vessel identifiers
-    paths.tables.mkdir(parents=True, exist_ok=True)
-    by_class = (vis.group_by("asset_type", "buffer_nm", "visit_class")
-                .agg(pl.len().alias("visits"), pl.col("mmsi").n_unique().alias("vessels"),
-                     (pl.col("duration_s").median() / 60).round(1).alias("median_min"),
-                     pl.col("sog_median").median().round(1).alias("median_sog_kn"),
-                     pl.col("depth_m").median().round(0).alias("median_depth_m"))
-                .sort("asset_type", "buffer_nm", "visit_class"))
-    by_class.write_csv(paths.tables / "exposure_by_class.csv")
-    by_type = (vis.filter(pl.col("buffer_nm") == 1.0)
-               .group_by("ship_type")
-               .agg(pl.col("mmsi").n_unique().alias("vessels"),
-                    (pl.col("duration_s").sum() / 3600).round(1).alias("hours_inside_1nm"),
-                    (pl.col("visit_class") == "loiter").sum().alias("loiter_visits"))
-               .sort("hours_inside_1nm", descending=True))
-    by_type.write_csv(paths.tables / "exposure_by_ship_type_1nm.csv")
+    write_aggregates(vis, paths.tables)
 
     from cableguard.plots import exposure_scatter
     fig = exposure_scatter(vis, 1.0, paths.figures / "phase2_visits_1nm.png",
@@ -97,7 +85,28 @@ def run(cfg: dict[str, Any], region: Region) -> dict[str, Any]:
             for b in p.buffers_nm
         },
         "depth_available": depth_tif.exists(),
+        "visits_without_depth_share": round(vis["depth_m"].null_count() / vis.height, 4),
         "figure": str(fig),
     }
     (paths.tables / "phase2_summary.json").write_text(json.dumps(summary, indent=2))
     return summary
+
+
+def write_aggregates(vis: pl.DataFrame, tables_dir) -> None:
+    """Publishable tables: counts and medians only, no vessel identifiers."""
+    tables_dir.mkdir(parents=True, exist_ok=True)
+    by_class = (vis.group_by("asset_type", "buffer_nm", "visit_class")
+                .agg(pl.len().alias("visits"), pl.col("mmsi").n_unique().alias("vessels"),
+                     (pl.col("duration_s").median() / 60).round(1).alias("median_min"),
+                     pl.col("sog_median").median().round(1).alias("median_sog_kn"),
+                     pl.col("depth_m").median().round(0).alias("median_depth_m"),
+                     pl.col("depth_m").is_null().mean().round(3).alias("share_no_depth"))
+                .sort("asset_type", "buffer_nm", "visit_class"))
+    by_class.write_csv(tables_dir / "exposure_by_class.csv")
+    by_type = (vis.filter(pl.col("buffer_nm") == 1.0)
+               .group_by("ship_type")
+               .agg(pl.col("mmsi").n_unique().alias("vessels"),
+                    (pl.col("duration_s").sum() / 3600).round(1).alias("hours_inside_1nm"),
+                    (pl.col("visit_class") == "loiter").sum().alias("loiter_visits"))
+               .sort("hours_inside_1nm", descending=True))
+    by_type.write_csv(tables_dir / "exposure_by_ship_type_1nm.csv")
