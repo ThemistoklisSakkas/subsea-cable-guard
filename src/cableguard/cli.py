@@ -24,7 +24,8 @@ def main(argv: list[str] | None = None) -> int:
                        ("phase1", "build infrastructure layer, buffers, density map"),
                        ("bathy-fetch", "download EMODnet bathymetry for a region"),
                        ("phase2", "exposure of every track to the infrastructure"),
-                       ("phase3", "risk rules, context factors and cases")]:
+                       ("phase3", "risk rules, context factors and cases"),
+                       ("phase4", "evaluation: synthetic injection, false alarms, trade-off")]:
         sp = sub.add_parser(name, help=text)
         sp.add_argument("--region", required=True)
     cs = sub.add_parser("cases", help="print the top flagged cases (no vessel identities)")
@@ -49,10 +50,10 @@ def main(argv: list[str] | None = None) -> int:
             print()
         return 0
 
-    if args.cmd in ("infra-fetch", "phase1", "bathy-fetch", "phase2", "phase3"):
+    if args.cmd in ("infra-fetch", "phase1", "bathy-fetch", "phase2", "phase3", "phase4"):
         import json
 
-        from cableguard import phase1, phase2, phase3
+        from cableguard import phase1, phase2, phase3, phase4
         from cableguard.regions import get_region
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
         region = get_region(cfg, args.region)
@@ -64,8 +65,10 @@ def main(argv: list[str] | None = None) -> int:
             phase2.fetch_bathymetry(cfg, region)
         elif args.cmd == "phase2":
             print(json.dumps(phase2.run(cfg, region), indent=2))
-        else:
+        elif args.cmd == "phase3":
             print(json.dumps(phase3.run(cfg, region), indent=2, default=str))
+        else:
+            print(json.dumps(phase4.run(cfg, region), indent=2, default=str))
         return 0
 
     ccfg = collector_config(cfg)

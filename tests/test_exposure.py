@@ -174,3 +174,18 @@ def test_aggregates_ignore_missing_depth(tmp_path):
     row = pl.read_csv(tmp_path / "exposure_by_class.csv").row(0, named=True)
     assert row["median_depth_m"] == 20 and row["share_no_depth"] == pytest.approx(0.333)
     assert "mmsi" not in pl.read_csv(tmp_path / "exposure_by_ship_type_1nm.csv").columns
+
+
+def test_fast_approach_and_slow_drag_are_separate_visits(layer, params):
+    """Phase 4 finding: one visit mixing a 12 kn approach (fix every 10 s) and a 2.5 kn
+    drag (fix every 60 s) had a fix-median speed of ~10 kn and hid the drag."""
+    xs_fast = np.arange(505_000, 510_000, 61.7)                   # 12 kn east, 10 s fixes
+    xs_slow = 510_000 + np.arange(1, 91) * 77.2                   # 2.5 kn east, 60 s fixes
+    fast = track(5, xs_fast, np.full(xs_fast.size, Y0 + 300), 10, 12, 90, 90)
+    slow = track(5, xs_slow, np.full(xs_slow.size, Y0 + 300), 60, 2.5, 90, 90)
+    slow = slow.with_columns(ts=pl.col("ts") + (fast["ts"].max() - T0) + timedelta(seconds=60))
+    v = run_scenario(layer, params, pl.concat([fast, slow])).filter(pl.col("buffer_nm") == 1.0)
+    assert v.height == 2
+    drag = v.sort("start").row(1, named=True)
+    assert drag["sog_median"] == pytest.approx(2.5, abs=0.1)
+    assert drag["duration_s"] >= 85 * 60

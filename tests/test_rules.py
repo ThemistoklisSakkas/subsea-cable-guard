@@ -254,3 +254,24 @@ def test_top_cases_has_no_vessel_identifier():
     })
     t = top_cases(cases, 5)
     assert t.height == 1 and "mmsi" not in t.columns
+
+
+def test_regime_pieces_of_one_pass_are_not_repeated_passes():
+    """One slow pass split into 3 pieces by speed regime must not count as 3 passes."""
+    t = [T0, T0 + timedelta(minutes=12), T0 + timedelta(minutes=30)]
+    v = visits(mmsi=[7] * 3, start=t, end=[t[1] - timedelta(minutes=1),
+                                            t[2] - timedelta(minutes=1),
+                                            T0 + timedelta(minutes=50)],
+               sog_median=[4.0, 6.5, 4.0], duration_s=[660.0, 1020.0, 1200.0],
+               ship_type=["Cargo"] * 3)
+    assert rule_repeated_passes(v, RC).is_empty()
+
+
+def test_merge_passes_weights_speed_by_duration():
+    from cableguard.rules import merge_passes
+    v = visits(mmsi=[7] * 2, start=[T0, T0 + timedelta(minutes=31)],
+               end=[T0 + timedelta(minutes=30), T0 + timedelta(minutes=40)],
+               sog_median=[2.0, 12.0], duration_s=[1800.0, 540.0], ship_type=["Cargo"] * 2)
+    m = merge_passes(v, 10).row(0, named=True)
+    assert m["n_pieces"] == 2
+    assert m["sog_median"] == pytest.approx((2 * 1800 + 12 * 540) / 2340)

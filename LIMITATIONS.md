@@ -63,3 +63,16 @@
 - **AIS gaps** come from the previous project's classification (2 h minimum, coverage test);
   shorter silences are not seen.
 - **Explanations** name assets (public infrastructure names) but never vessel names.
+
+## Evaluation (Phase 4)
+
+- **Synthetic is not real.** The tracks follow simple kinematics; real drags (wind, current,
+  chain catenary, intermittent AIS) are messier. Detection rates are an estimate of what the
+  rules can catch, not a field performance figure.
+- **The generator and the rules share assumptions** (e.g. what an anchor drag looks like); a
+  behaviour neither anticipates would be missed by both. Hard cases are included on purpose.
+- **False alarms are an upper bound**: without labels every flagged real case counts as false,
+  although some may deserve review.
+- **AIS-gap rule (R3) is not evaluated** with synthetic tracks (gaps come from the previous
+  project's segmentation).
+- Five days of June traffic; seasonal patterns (fishing, leisure) will shift the alarm load.

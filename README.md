@@ -15,7 +15,7 @@ transferred to the Aegean and Eastern Mediterranean as a case study.
 | 1 | Infrastructure layer (EMODnet + OSM cables/pipelines, buffers, density map) | Denmark done; Eastern Med pending |
 | 2 | Exposure per vessel track | Denmark done; Eastern Med pending |
 | 3 | Rule-based risk behaviours + explainable score | Denmark done (thresholds untuned) |
-| 4 | Evaluation without labels (synthetic injection, false-alarm rate) | - |
+| 4 | Evaluation without labels (synthetic injection, false-alarm rate) | Denmark done |
 | 5 | Optional unsupervised ML comparison | - |
 | 6 | Regional transfer + receiver-coverage model | - |
 | 7 | Streamlit dashboard, demo | - |
@@ -147,6 +147,28 @@ Each raw score is multiplied by a **context factor** = ship type x length x dept
 Alerts of one vessel, asset and day form a **case**: score = 1 - prod(1 - alert score),
 flagged at >= 0.5. Every case carries a plain-language explanation of each alert and of
 every context factor. All weights are in `config/default.yaml`; Phase 4 tunes them.
+
+## Phase 4 - Evaluation without labels
+
+```powershell
+.venv\Scripts\python.exe -m cableguard phase4 --region denmark
+```
+
+- **Synthetic injection** (seed 42): 150 anchor-drag and 150 loiter tracks next to real
+  assets in the real geography (10-100 m depth, outside ports, anchorages and operating wind
+  farms). Each track approaches, performs the event, and leaves; it reports at realistic AIS
+  intervals with noise. Indicators appear only with set probabilities (status *at anchor*
+  60 %, sideways drift 60 %, speed drop 70 %, 15 % small vessels), so the set includes hard
+  cases. Ground truth: the exact start and end of the risky behaviour.
+- **Detection and time-to-alert**: synthetic tracks go through the unchanged Phase 2-3 code.
+  Time-to-alert replays each track as if live: it is cut every 5 min from 60 min before to
+  180 min after the event start and re-scored; the first flagged cut is the alert time.
+- **False alarms**: flagged cases on the real traffic (assumed overwhelmingly benign, so an
+  upper bound), per day and as the share of exposed ferries, fishing vessels and
+  crossing-only vessels that get flagged.
+- **Trade-off**: flag threshold 0.3-0.9 x loiter duration 20-90 min. The operating point is
+  the highest mean detection within an operator budget of 20 flagged cases per day.
+  It is reported, not written into the configuration automatically.
 
 ## Documentation
 

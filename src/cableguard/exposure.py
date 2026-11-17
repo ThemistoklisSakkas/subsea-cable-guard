@@ -41,6 +41,8 @@ class ExposureParams:
     bearing_step_m: float
     simplify_m: float
     index_piece_m: float
+    regime_split_kn: float
+    regime_smooth_fixes: int
 
     @classmethod
     def from_config(cls, cfg: dict[str, Any]) -> ExposureParams:
@@ -55,6 +57,8 @@ class ExposureParams:
             bearing_step_m=float(e["bearing_step_m"]),
             simplify_m=float(e["simplify_m"]),
             index_piece_m=float(e["index_piece_m"]),
+            regime_split_kn=float(e["regime_split_kn"]),
+            regime_smooth_fixes=int(e["regime_smooth_fixes"]),
         )
 
 
@@ -169,6 +173,7 @@ def build_visits(df: pl.DataFrame, near: pl.DataFrame, ctx: ExposureContext,
            .sort("asset_type", "buffer_nm", "gid"))
     # A new visit starts when the run of consecutive fixes breaks.
     brk = ((pl.col("gid") - pl.col("gid").shift(1) != 1)
+           | (pl.col("slow") != pl.col("slow").shift(1))
            | (pl.col("seg") != pl.col("seg").shift(1))
            | (pl.col("mmsi") != pl.col("mmsi").shift(1))
            | (pl.col("asset_type") != pl.col("asset_type").shift(1))
@@ -284,7 +289,8 @@ def load_points(path, vessels: pl.DataFrame | None, excluded_types: list[str],
 def exposure_for_bucket(df: pl.DataFrame, ctx: ExposureContext, p: ExposureParams,
                         crs: str) -> pl.DataFrame:
     x, y = project(df["lon"].to_numpy(), df["lat"].to_numpy(), crs)
-    df = df.with_columns(x=pl.Series(np.asarray(x)), y=pl.Series(np.asarray(y)))
+    df = df.with_columns(x=pl.Series(np.asarray(x)), y=pl.Series(np.asarray(y)),
+                         slow=speed_regime(p))
     near = points_near_infrastructure(df, ctx, p)
     return build_visits(df, near, ctx, p)
 
@@ -299,3 +305,15 @@ def track_summary(visits: pl.DataFrame) -> pl.DataFrame:
                  (pl.col("visit_class") == "transit").sum().alias("n_transit"),
                  pl.col("feature").n_unique().alias("n_features"))
             .sort("mmsi", "asset_type", "buffer_nm"))
+
+
+def speed_regime(p: ExposureParams) -> pl.Expr:
+    """True while the ship is slow (smoothed SOG below the regime threshold).
+
+    Rolling median over a few fixes of the same track segment, so that noise around
+    the threshold does not chop a visit into fragments. Missing SOG counts as slow
+    only if its neighbours are.
+    """
+    smooth = (pl.col("sog").rolling_median(p.regime_smooth_fixes, min_samples=1, center=True)
+              .over("mmsi", "seg"))
+    return smooth.fill_null(0.0) < p.regime_split_kn

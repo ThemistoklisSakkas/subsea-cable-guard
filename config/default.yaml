@@ -100,6 +100,10 @@ exposure:
   bearing_step_m: 50              # cable direction from +/- 50 m around the nearest point
   simplify_m: 10                  # max line simplification error for the distance index
   index_piece_m: 1000             # index lines as straight pieces of at most 1 km (speed)
+  # A visit also ends when the ship changes speed regime (fast <-> slow), so that a fast
+  # approach and the slow manoeuvre after it are judged separately (found in Phase 4).
+  regime_split_kn: 6.0
+  regime_smooth_fixes: 5          # rolling median over this many fixes, against noise flicker
 
 bathymetry:
   url: https://ows.emodnet-bathymetry.eu/wcs
@@ -139,6 +143,8 @@ rules:
     window_h: 24
     max_sog_kn: 8.0
     exempt_ship_types: ["Passenger", "HSC"]   # scheduled ferries cross many times a day
+    merge_gap_min: 10           # visit pieces of one vessel over one asset closer than this
+                                # in time are one pass (speed-regime splits are not passes)
     base_score: 0.5
     per_extra_pass: 0.1
     max_score: 0.9
@@ -164,3 +170,40 @@ rules:
     in_anchorage: {loiter: 0.0, anchor_drag: 0.6, ais_gap: 0.5, repeated_passes: 0.6}
     # Service and construction vessels work inside operating wind farms every day.
     in_windfarm: {loiter: 0.2, anchor_drag: 0.5, ais_gap: 0.5, repeated_passes: 0.2}
+
+# ---------------------------------------------------------------- Phase 4: evaluation without labels
+evaluation:
+  n_tracks_per_scenario: 150
+  start_window: ["2025-06-02T06:00:00", "2025-06-05T18:00:00"]   # inside the DMA data window
+  site:
+    min_depth_m: 10
+    max_depth_m: 100
+    standoff_nm: [0.05, 0.4]        # distance of the event from the asset
+  vessel:
+    types: {Cargo: 0.5, Tanker: 0.3, Other: 0.2}
+    p_small: 0.15                   # hard case: 40-80 m instead of 90-250 m
+    length_m: [90, 250]
+    small_length_m: [40, 80]
+  report_interval_s: {moving: 10, slow: 60, anchored: 180}
+  noise: {pos_m: 10, sog_kn: 0.2, cog_deg: 5}
+  approach: {speed_kn: [10, 14], slow_speed_kn: [3, 5], duration_min: 25, decel_min: 5}
+  departure: {speed_kn: 10, duration_min: 15}
+  anchor_drag:
+    p_speed_drop: 0.7               # else approaches slowly: no "slowed before entry" signal
+    anchored_min: [0, 60]
+    drag_speed_kn: [1.5, 4.0]
+    drag_duration_min: [30, 120]
+    p_along: 0.5                    # along the asset, else across it
+    p_status_at_anchor: 0.6
+    p_sideways: 0.6
+    sideways_deg: [20, 60]
+  loiter:
+    duration_min: [30, 240]
+    drift_speed_kn: [0.0, 0.8]
+    p_status_at_anchor: 0.5
+  time_to_alert: {from_min: -60, to_min: 180, step_min: 5}
+  sweep:
+    flag_thresholds: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    loiter_min_duration_min: [20, 30, 45, 60, 90]
+  operator_budget_per_day: 20       # flagged cases one operator can review per day (whole box)
+  traffic_groups: {ferries: ["Passenger", "HSC"], fishing: ["Fishing"]}

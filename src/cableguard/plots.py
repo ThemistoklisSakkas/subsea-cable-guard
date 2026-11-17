@@ -6,6 +6,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import matplotlib
+import matplotlib.ticker
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -208,6 +209,69 @@ def cases_figure(cases: pl.DataFrame, threshold: float, out: Path) -> Path:
     a2.set_title("What triggered flagged cases", loc="left", color=INK, fontsize=11)
     fig.text(0.01, -0.03, "A case can involve several rules. Flagged for review only; "
              "aggregated, no vessel identities.", color=MUTED, fontsize=7)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, bbox_inches="tight", facecolor=SURFACE)
+    plt.close(fig)
+    return out
+
+
+# Five loiter durations: categorical slots 1-5 in fixed order, plus a distinct marker each
+# (three slots are below 3:1 contrast, so identity never relies on colour alone).
+SWEEP_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
+SWEEP_MARKERS = ["o", "s", "^", "D", "v"]
+
+
+def tradeoff_figure(table: pl.DataFrame, tta: pl.DataFrame, op: dict, budget: float,
+                    out: Path) -> Path:
+    """Detection of synthetic events vs. flagged cases per day on real traffic."""
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.6), dpi=150, facecolor=SURFACE,
+                             layout="constrained", gridspec_kw={"width_ratios": [1, 1, 0.9]})
+    durations = sorted(table["loiter_min"].unique().to_list())
+    for ax, col, title in ((axes[0], "det_anchor_drag", "Anchor-drag tracks"),
+                           (axes[1], "det_loiter", "Loiter tracks")):
+        ax.set_facecolor(SURFACE)
+        for i, d in enumerate(durations):
+            t = table.filter(pl.col("loiter_min") == d).sort("threshold")
+            ax.plot(t["alarms_per_day"], t[col], color=SWEEP_COLORS[i % 5],
+                    marker=SWEEP_MARKERS[i % 5], ms=5, lw=1.6, label=f"loiter >= {d} min")
+        ax.axvline(budget, color=MUTED, ls="--", lw=1)
+        ax.text(budget, 0.02, f" budget {budget:g}/day", color=INK_2, fontsize=7)
+        ax.plot(op["alarms_per_day"], op[col], marker="*", ms=16, color=INK, ls="none",
+                label="operating point")
+        ax.set_xscale("log")
+        ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:g}"))
+        ax.xaxis.set_minor_formatter(matplotlib.ticker.FuncFormatter(
+            lambda x, _: f"{x:g}" if x in (20, 30, 50, 70) else ""))
+        ax.set_ylim(0, 1.02)
+        ax.set_xlabel("Flagged cases per day, real traffic (log)", color=INK_2)
+        ax.set_title(title, loc="left", color=INK, fontsize=11)
+        ax.grid(color="#e9e8e4", lw=0.6)
+        ax.tick_params(colors=MUTED, labelsize=8)
+        for s in ("top", "right"):
+            ax.spines[s].set_visible(False)
+    axes[0].set_ylabel("Detection rate (synthetic)", color=INK_2)
+    axes[1].legend(fontsize=7, frameon=False, loc="lower right", labelcolor=INK)
+
+    ax = axes[2]
+    ax.set_facecolor(SURFACE)
+    bins = np.arange(-60, 185, 10)
+    for i, (sc, label) in enumerate((("anchor_drag", "Anchor drag"), ("loiter", "Loiter"))):
+        vals = tta.filter((pl.col("scenario") == sc) & pl.col("tta_min").is_not_null())
+        ax.hist(vals["tta_min"].to_numpy(), bins=bins, color=SWEEP_COLORS[i], alpha=0.75,
+                edgecolor=SURFACE, lw=1, label=f"{label} (median "
+                f"{vals['tta_min'].median() if vals.height else float('nan'):.0f} min)",
+                hatch=None if i == 0 else "//")
+    ax.axvline(0, color=INK_2, lw=1)
+    ax.set_xlabel("Minutes from event start to alert", color=INK_2)
+    ax.set_ylabel("Tracks", color=INK_2)
+    ax.set_title("Time to alert at the operating point", loc="left", color=INK, fontsize=11)
+    ax.legend(fontsize=7, frameon=False, labelcolor=INK)
+    ax.tick_params(colors=MUTED, labelsize=8)
+    for s in ("top", "right"):
+        ax.spines[s].set_visible(False)
+    fig.text(0.01, -0.03, f"Operating point: loiter >= {op['loiter_min']} min, flag threshold "
+             f"{op['threshold']}. Real-traffic alarms are an upper bound on false alarms "
+             "(no labels).", color=MUTED, fontsize=7)
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out, bbox_inches="tight", facecolor=SURFACE)
     plt.close(fig)

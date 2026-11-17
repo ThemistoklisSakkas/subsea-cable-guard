@@ -15,6 +15,7 @@ never state intent.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
 import numpy as np
@@ -126,11 +127,37 @@ def rule_ais_gap(g: pl.DataFrame, c: dict[str, Any]) -> pl.DataFrame:
 
 # ------------------------------------------------------------------ R4 repeated passes
 
+def merge_passes(v: pl.DataFrame, gap_min: float) -> pl.DataFrame:
+    """Join visit pieces of the same vessel over the same asset into passes.
+
+    Since visits are also split by speed regime (Phase 4 finding), one physical pass
+    can be several visits. Pieces less than `gap_min` apart form one pass; its speed
+    is the duration-weighted mean of the pieces' median speeds.
+    """
+    gap = timedelta(minutes=gap_min)
+    s = v.sort("mmsi", "feature", "start")
+    new = ((pl.col("mmsi") != pl.col("mmsi").shift(1))
+           | (pl.col("feature") != pl.col("feature").shift(1))
+           | (pl.col("start") - pl.col("end").shift(1) > gap)).fill_null(True)
+    w = pl.col("duration_s").cast(pl.Float64)
+    return (s.with_columns(pass_id=new.cum_sum())
+            .group_by("pass_id", maintain_order=True)
+            .agg(pl.col("mmsi").first(), pl.col("feature").first(),
+                 pl.col("feature_name").first(), pl.col("asset_type").first(),
+                 pl.col("ship_type").first(), pl.col("lat").first(), pl.col("lon").first(),
+                 pl.col("start").min(), pl.col("end").max(),
+                 pl.when(w.sum() > 0).then((pl.col("sog_median") * w).sum() / w.sum())
+                 .otherwise(pl.col("sog_median").mean()).alias("sog_median"),
+                 pl.len().alias("n_pieces"))
+            .drop("pass_id"))
+
+
 def rule_repeated_passes(v: pl.DataFrame, c: dict[str, Any]) -> pl.DataFrame:
     """At least `min_passes` slow passes over the same asset feature within `window_h`."""
     r = c["repeated_passes"]
-    slow = v.filter((pl.col("sog_median") <= r["max_sog_kn"])
-                    & ~pl.col("ship_type").fill_null("").is_in(r["exempt_ship_types"]))
+    passes = merge_passes(v, r["merge_gap_min"])
+    slow = passes.filter((pl.col("sog_median") <= r["max_sog_kn"])
+                         & ~pl.col("ship_type").fill_null("").is_in(r["exempt_ship_types"]))
     win = np.timedelta64(int(r["window_h"] * 3600), "s")
     rows = []
     for (_mmsi, _feat), grp in slow.sort("start").group_by(["mmsi", "feature"],

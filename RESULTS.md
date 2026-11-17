@@ -153,3 +153,74 @@ power cable, moving along it (10 deg), heading 43 deg off course, slowed from 11
 entry, depth 37 m, outside ports and anchorages - raw and context scores 1.0.
 
 Figure: `outputs/denmark/figures/phase3_cases.png`.
+
+## Phase 4 - Evaluation without labels
+
+### Two pipeline defects found by the evaluation (fixed before the numbers below)
+
+1. **Fix-median speed hid anchor drags.** A synthetic ship that arrived at 12 kn (fix every 10 s)
+   and then dragged at 2-4 kn (fix every 60 s) formed one visit whose median speed was ~10 kn:
+   the fast approach had six times more fixes. The drag was invisible. Fix: a visit also ends
+   when the smoothed speed regime changes (rolling median of 5 fixes, threshold 6 kn).
+   Regression test added.
+2. **Regime pieces counted as repeated passes.** After fix 1, one physical pass could be 2-3
+   visits, and R4 counted them as passes (alerts 1,184 -> 3,717). Fix: pieces of one vessel
+   over one asset less than 10 min apart are merged into one pass, with duration-weighted speed.
+   R4 alerts back to 1,081.
+
+Re-run of Phases 2-3 after the fixes (Denmark): 169,597 visits; 363 flagged cases at the old
+threshold 0.5 (was 301) - slow behaviour previously diluted by fast parts of a visit is now seen.
+
+### Results (seed 42; 150 anchor-drag + 150 loiter synthetic tracks; 113,547 synthetic fixes)
+
+Sweep: flag threshold 0.3-0.9 x loiter duration 20-90 min (35 settings, full table in
+`outputs/denmark/tables/phase4_sweep.csv`). Selected rows (loiter >= 20 min):
+
+| Threshold | Flagged cases/day (real) | Drag detected | Loiter detected | Fishing vessels flagged | Ferries flagged | Crossing-only vessels flagged |
+|---|---|---|---|---|---|---|
+| 0.3 | 136.4 | 89 % | 99 % | 19.3 % | 10.1 % | 0.6 % |
+| 0.5 | 72.6 | 76 % | 89 % | 11.7 % | 5.5 % | 0 % |
+| 0.7 | 42.6 | 65 % | 69 % | 6.4 % | 2.8 % | 0 % |
+| 0.9 | 20.0 | 41 % | 43 % | 0.4 % | 0.5 % | 0 % |
+
+Best setting for different operator budgets (flagged cases per day, whole Danish box):
+
+| Budget | Loiter (min) | Threshold | Cases/day | Drag | Loiter |
+|---|---|---|---|---|---|
+| 10 | 90 | 0.9 | 14.8 | 28 % | 41 % |
+| 20 (default) | 20 | 0.9 | 20.0 | 41 % | 43 % |
+| 30 | 90 | 0.7 | 28.2 | 55 % | 59 % |
+| 45 | 60 | 0.6 | 44.4 | 74 % | 71 % |
+| 60 | 20 | 0.6 | 55.8 | 75 % | 81 % |
+| 80 | 20 | 0.5 | 72.6 | 76 % | 89 % |
+
+Time to alert at the 20/day point: anchor drag median 30 min (p90 45 min) after the drag
+starts; loiter 105 min (at threshold 0.9 a single loiter needs ~100 min to score 0.9).
+No alert fired before the event started.
+
+What the detection depends on (at the 20/day point, `phase4_detection_breakdown.csv`):
+- **speed drop before the event**: drags with it 57 % detected, without it 4 %;
+- **small vessels (40-80 m)**: 6 % (drag) and 0 % (loiter) - by design (length factor 0.3);
+- status *at anchor* (47 % vs 32 %), sideways drift (46 % vs 34 %) and drag along the asset
+  (50 % vs 34 %) all help.
+
+Readings:
+- There is **no free lunch**: detection and alarm load move together along one smooth curve.
+  The knee lies around 45 cases/day (loiter 60 min, threshold 0.6): about 74 % of drags and
+  71 % of loiters detected; beyond it, more alarms buy little detection.
+- **Crossing traffic is almost never flagged** (0-0.6 % of crossing-only vessels at every
+  setting): the rules respond to behaviour, not to presence.
+- **Fishing vessels** are the main false-alarm group (12 % of exposed fishing vessels flagged at
+  0.5). Bottom trawling is a real cable hazard, so they are not exempted.
+- **Loiter duration** changes the alarm load by up to ~20 % but hardly the drag detection.
+- Detection is capped near 89 % even at 0.3: mostly fast across-cable drags that leave the 1 nm
+  buffer within the 20-minute minimum, and small vessels.
+
+**Operating point: a decision for the operator, not the code.** It is reported here and is not
+written into the configuration automatically.
+
+**Incident case study**: no publicly reported cable or pipeline incident falls inside the DMA
+data window (2025-06-02..06), so there is no qualitative case. Using a past incident would need
+a different data window and would conflict with the rule not to identify individual vessels.
+
+Figure: `outputs/denmark/figures/phase4_tradeoff.png`.
