@@ -201,6 +201,7 @@ def cases_figure(cases: pl.DataFrame, threshold: float, out: Path) -> Path:
     for yi, v in zip(y, vals, strict=True):
         a2.text(v, yi, f" {v:,}", va="center", color=INK, fontsize=8)
     a2.set_yticks(y, labels, color=INK, fontsize=9)
+    a2.tick_params(axis="y", length=0, pad=8)
     a2.invert_yaxis()
     a2.set_xlabel("Flagged cases involving the rule", color=INK_2)
     a2.set_title("What triggered flagged cases", loc="left", color=INK, fontsize=11)
