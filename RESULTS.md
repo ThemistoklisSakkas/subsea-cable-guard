@@ -87,11 +87,11 @@ Visits by buffer and class (all asset types):
 
 | Asset | Class | Visits | Vessels | Duration (min) | SOG (kn) | Depth (m) | No depth (land cell) |
 |---|---|---|---|---|---|---|---|
-| Telecom | crossing | 11,015 | 2,099 | 13.5 | 11.1 | see csv | |
+| Telecom | crossing | 11,015 | 2,099 | 13.5 | 11.1 | 27 | 0.2 % |
 | Telecom | loiter | 1,429 | 449 | 96.0 | 0.0 | 13 | 39 % |
-| Power | crossing | 10,956 | 2,727 | 15.5 | 10.3 | | |
+| Power | crossing | 10,956 | 2,727 | 15.5 | 10.3 | 24 | 1.2 % |
 | Power | loiter | 2,277 | 850 | 119.8 | 0.0 | 4 | 22 % |
-| Pipeline | crossing | 5,113 | 1,712 | 17.2 | 10.3 | | |
+| Pipeline | crossing | 5,113 | 1,712 | 17.2 | 10.3 | 28 | 1.5 % |
 | Pipeline | loiter | 2,127 | 778 | 169.2 | 0.0 | 2 | 37 % |
 
 Full table: `outputs/denmark/tables/exposure_by_class.csv`.
