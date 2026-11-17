@@ -20,9 +20,28 @@ def main(argv: list[str] | None = None) -> int:
                    help="stop after N seconds (for testing); default: run forever")
     sub.add_parser("compact", help="merge finished days' part files into daily files")
     sub.add_parser("status", help="summarise collected data and the last heartbeat")
+    for name, text in [("infra-fetch", "download cable/pipeline geometries for a region"),
+                       ("phase1", "build infrastructure layer, buffers, density map")]:
+        sp = sub.add_parser(name, help=text)
+        sp.add_argument("--region", required=True)
     args = ap.parse_args(argv)
 
-    ccfg = collector_config(load_config(args.config))
+    cfg = load_config(args.config)
+
+    if args.cmd in ("infra-fetch", "phase1"):
+        import json
+
+        from cableguard import phase1
+        from cableguard.regions import get_region
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+        region = get_region(cfg, args.region)
+        if args.cmd == "infra-fetch":
+            phase1.fetch(cfg, region)
+        else:
+            print(json.dumps(phase1.build(cfg, region), indent=2))
+        return 0
+
+    ccfg = collector_config(cfg)
 
     if args.cmd == "collect":
         from cableguard.collector.client import SingleInstance, run, setup_logging

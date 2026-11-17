@@ -11,8 +11,8 @@ transferred to the Aegean and Eastern Mediterranean as a case study.
 
 | Phase | Content | Status |
 |---|---|---|
-| 0 | Real-time AIS collector (aisstream.io -> daily Parquet) | in progress |
-| 1 | Infrastructure layer (EMODnet cables/pipelines, buffers, density map) | - |
+| 0 | Real-time AIS collector (aisstream.io -> daily Parquet) | code done; deployment pending |
+| 1 | Infrastructure layer (EMODnet + OSM cables/pipelines, buffers, density map) | in progress (Denmark) |
 | 2 | Exposure per vessel track | - |
 | 3 | Rule-based risk behaviours + explainable score | - |
 | 4 | Evaluation without labels (synthetic injection, false-alarm rate) | - |
@@ -85,6 +85,27 @@ Finished daily files are copied to the laptop with
 Caveat: Oracle may reclaim Always Free instances that stay idle (CPU p95, network and, for
 A1, memory all below 20 % over 7 days). The collector is light, so the data is pulled to the
 laptop regularly and the heartbeat log shows any interruption.
+
+## Phase 1 - Infrastructure layer
+
+```powershell
+.venv\Scripts\python.exe -m cableguard infra-fetch --region denmark   # download & cache sources
+.venv\Scripts\python.exe -m cableguard phase1 --region denmark        # layer, buffers, density, map
+```
+
+- Sources: EMODnet Human Activities (national authorities, *surveyed*) and OpenStreetMap
+  submarine cables/pipelines (*community*). EMODnet coverage is national and patchy: in the
+  Danish box it holds German and Norwegian cable data and the pan-European pipelines, but no
+  Danish national cables; in the Eastern Mediterranean it holds no pipelines and only a few
+  telecom cables. OSM fills part of the gap.
+- Every geometry keeps its source, id and status (e.g. in use / out of use).
+- Buffers (0.5 / 1 / 2 nm) are dissolved per asset type, which also removes double counting
+  where two sources map the same cable. A source is only used for buffers at least as wide as
+  its accuracy class allows (surveyed 0.5 nm, community 1 nm, schematic 2 nm).
+- Point queries use an STRtree over the lines (exact point-to-line distance).
+- Traffic density is time-weighted (vessel-hours per 1 km cell): each fix is credited with the
+  time since the previous fix of its track segment, capped at 10 minutes, so frequent
+  reporters are not over-counted.
 
 ## Documentation
 

@@ -16,3 +16,24 @@ Collection log (fill in from `python -m cableguard status`):
 | Period (UTC) | Days | Uptime connected | Reconnects | Position rows/day | Static rows/day | Unique MMSI/day | MB/day |
 |---|---|---|---|---|---|---|---|
 | _pending first run_ | | | | | | | |
+
+## Phase 1 - Infrastructure layer
+
+Source coverage check (WFS hits / Overpass ways inside each region box, 2026-11-17):
+
+| Source | Denmark box | Eastern Med box |
+|---|---|---|
+| EMODnet pipelines | 24 | 0 |
+| EMODnet power cables (DE BSH, NO NVE) | 88 + 82 | 0 |
+| EMODnet telecom cables (DE BSH, FR SHOM/SIG, MT) | 27 + 1 | 0 + 7 + 3 + 1 |
+| OSM submarine power cables | 238 | 39 |
+| OSM submarine pipelines | 43 | 42 |
+| OSM submarine telecom lines | 18 | 6 |
+
+Tests: 58 passed.
+
+Denmark run (fill in from `phase1 --region denmark`):
+
+| Metric | Value |
+|---|---|
+| _pending first run_ | |

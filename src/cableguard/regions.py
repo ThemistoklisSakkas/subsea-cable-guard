@@ -1,0 +1,58 @@
+"""Per-region settings and output locations.
+
+Every file a region produces goes through `RegionPaths`, so the rule
+"Eastern Mediterranean data, results and figures stay private" is enforced in
+one place and covered by a test.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from cableguard.config import ROOT, BBox, resolve
+
+
+@dataclass(frozen=True)
+class RegionPaths:
+    infra_raw: Path      # downloaded source files, as received
+    infra: Path          # standardised layer, buffers
+    tables: Path
+    figures: Path
+
+
+@dataclass(frozen=True)
+class Region:
+    name: str
+    bbox: BBox
+    metric_crs: str
+    private: bool
+    paths: RegionPaths
+    trajectories_dir: Path | None
+
+
+def get_region(cfg: dict[str, Any], name: str, root: Path = ROOT) -> Region:
+    r = cfg["regions"][name]
+    private = bool(r["private"])
+    if private:
+        base_in = base_out = resolve(cfg["paths"]["private"], root) / name
+        base_out = base_out / "outputs"
+    else:
+        base_in = resolve(cfg["paths"]["data"], root) / name
+        base_out = resolve(cfg["paths"]["outputs"], root) / name
+    paths = RegionPaths(
+        infra_raw=base_in / "infra" / "raw",
+        infra=base_in / "infra",
+        tables=base_out / "tables",
+        figures=base_out / "figures",
+    )
+    traj = r.get("trajectories_dir")
+    return Region(
+        name=name,
+        bbox=BBox(**r["bbox"]),
+        metric_crs=r["metric_crs"],
+        private=private,
+        paths=paths,
+        trajectories_dir=resolve(traj, root) if traj else None,
+    )

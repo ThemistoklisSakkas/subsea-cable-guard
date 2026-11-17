@@ -22,3 +22,16 @@
   network and - on A1 - memory all below 20 %) may be reclaimed. The collector is deliberately
   light, so this is a real risk; mitigated by regular pulls to the laptop. We do not generate
   artificial load to avoid it.
+
+## Infrastructure layer (Phase 1)
+
+- **Incomplete public data.** No open dataset maps every cable and pipeline. EMODnet holds
+  national contributions (in the Danish box: German and Norwegian cables, pan-European
+  pipelines; no Danish national cable data). OSM adds community-traced routes of variable
+  quality. Exposure computed later is therefore a lower bound for unmapped assets.
+- **Positional accuracy.** Mapped routes can differ from the true as-laid position; buffers
+  narrower than a source's accuracy class are not built for it.
+- **Out-of-use assets** are kept and labelled (`status`); whether they count for risk is a
+  Phase 3 decision.
+- **Density** uses AIS reception, so it shows where ships were *heard*: low values in areas of
+  poor receiver coverage are not proof of low traffic.

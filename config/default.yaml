@@ -4,14 +4,17 @@ seed: 42
 paths:
   data: data                 # public-safe inputs (Danish AIS, EMODnet, GEBCO)
   private: private           # Eastern Med case study - git-ignored
+  outputs: outputs           # public-region results and figures (git-ignored until curated)
+  land: ../maritime-ais-gnss/data/reference/ne/ne_10m_land.zip   # Natural Earth (public domain)
 
 regions:
   denmark:
     # Development region (Danish Maritime Authority historical AIS)
     bbox: {lat_min: 53.5, lat_max: 58.5, lon_min: 6.0, lon_max: 16.5}
     metric_crs: "EPSG:25832"          # ETRS89 / UTM 32N
-    # Existing DMA data from the previous project (not duplicated)
-    ais_dir: ../maritime-ais-gnss/data
+    # Existing DMA data, cleaned and segmented by the maritime-ais-gnss pipeline
+    # (2025-06-02..06). Read in place, not duplicated.
+    trajectories_dir: ../maritime-ais-gnss/data/processed/trajectories
     private: false
   eastmed:
     # Case-study region: Ionian, Aegean, Crete, Cyprus, Levantine basin, Dardanelles
@@ -39,3 +42,41 @@ collector:
   backoff_initial_s: 2
   backoff_max_s: 300
   lock_port: 47613                   # single-instance guard (localhost only)
+
+# ---------------------------------------------------------------- Phase 1: infrastructure
+infrastructure:
+  buffers_nm: [0.5, 1.0, 2.0]
+  # A route is only as good as its source. Buffers narrower than the source's
+  # positional uncertainty would give false precision, so each accuracy class has
+  # a minimum buffer at which its geometries are used.
+  min_buffer_nm:
+    surveyed: 0.5      # national authorities via EMODnet
+    community: 1.0     # OpenStreetMap: traced from charts/imagery, variable quality
+    schematic: 2.0     # TeleGeography-style schematic routes
+  sources:
+    emodnet:
+      url: https://ows.emodnet-humanactivities.eu/wfs
+      accuracy: surveyed
+      licence: CC BY 4.0
+      layers:              # layer -> asset type
+        pipelines: pipeline
+        pcablesbshcontis: power
+        pcablesnve: power
+        pcablesshom: power
+        bshcontiscables: telecom
+        shomcables: telecom
+        sigcables: telecom
+        maltacables: telecom
+        cicacables: telecom
+        ukfibrecables: telecom
+    osm:
+      url: https://overpass-api.de/api/interpreter
+      fallback_url: https://overpass.kumi.systems/api/interpreter
+      accuracy: community
+      licence: ODbL 1.0
+      timeout_s: 240
+
+# ---------------------------------------------------------------- Phase 1: traffic density
+density:
+  cell_m: 1000            # grid cell size in the region's metric CRS
+  max_dt_s: 600           # time between fixes credited to a cell is capped (gaps are not presence)
