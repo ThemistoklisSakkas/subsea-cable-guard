@@ -172,7 +172,8 @@ RULE_LABEL = {"loiter": "Loiter", "anchor_drag": "Anchor-drag signature",
 def cases_figure(cases: pl.DataFrame, threshold: float, out: Path) -> Path:
     """Left: case score distribution with the flag threshold. Right: flagged cases per rule."""
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4), dpi=150, facecolor=SURFACE,
-                                 gridspec_kw={"width_ratios": [1.3, 1]})
+                                 gridspec_kw={"width_ratios": [1.3, 1]},
+                                 layout="constrained")
     for ax in (a1, a2):
         ax.set_facecolor(SURFACE)
         ax.tick_params(colors=MUTED, labelsize=8)
