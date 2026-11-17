@@ -12,7 +12,7 @@ transferred to the Aegean and Eastern Mediterranean as a case study.
 | Phase | Content | Status |
 |---|---|---|
 | 0 | Real-time AIS collector (aisstream.io -> daily Parquet) | code done; deployment pending |
-| 1 | Infrastructure layer (EMODnet + OSM cables/pipelines, buffers, density map) | in progress (Denmark) |
+| 1 | Infrastructure layer (EMODnet + OSM cables/pipelines, buffers, density map) | Denmark done; Eastern Med pending |
 | 2 | Exposure per vessel track | - |
 | 3 | Rule-based risk behaviours + explainable score | - |
 | 4 | Evaluation without labels (synthetic injection, false-alarm rate) | - |
