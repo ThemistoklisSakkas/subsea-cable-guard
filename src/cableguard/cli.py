@@ -27,9 +27,27 @@ def main(argv: list[str] | None = None) -> int:
                        ("phase3", "risk rules, context factors and cases")]:
         sp = sub.add_parser(name, help=text)
         sp.add_argument("--region", required=True)
+    cs = sub.add_parser("cases", help="print the top flagged cases (no vessel identities)")
+    cs.add_argument("--region", required=True)
+    cs.add_argument("--top", type=int, default=5)
     args = ap.parse_args(argv)
 
     cfg = load_config(args.config)
+
+    if args.cmd == "cases":
+        import polars as pl
+
+        from cableguard.phase3 import top_cases
+        from cableguard.regions import get_region
+        region = get_region(cfg, args.region)
+        top = top_cases(pl.read_parquet(region.paths.rules / "cases.parquet"), args.top)
+        for i, row in enumerate(top.iter_rows(named=True), 1):
+            print(f"#{i}  {row['day']}  score {row['case_score']}  {row['ship_type']}  "
+                  f"[{row['rules']}]")
+            for part in row["explanation"].split(" | "):
+                print(f"    - {part}")
+            print()
+        return 0
 
     if args.cmd in ("infra-fetch", "phase1", "bathy-fetch", "phase2", "phase3"):
         import json

@@ -243,3 +243,14 @@ def test_windfarm_polygon_filters_status(tmp_path):
     poly = windfarm_polygon(p, ["Production", "Construction"])
     m = in_polygon(poly, np.array([55.05, 55.05]), np.array([11.05, 12.05]))
     assert m.tolist() == [True, False]        # the planned farm is not context
+
+
+def test_top_cases_has_no_vessel_identifier():
+    from cableguard.phase3 import top_cases
+    cases = pl.DataFrame({
+        "mmsi": [1, 2], "day": [T0.date(), T0.date()], "case_score": [0.9, 0.3],
+        "flagged": [True, False], "ship_type": ["Cargo", "Cargo"],
+        "rules": [["loiter"], ["loiter"]], "explanation": ["a", "b"],
+    })
+    t = top_cases(cases, 5)
+    assert t.height == 1 and "mmsi" not in t.columns

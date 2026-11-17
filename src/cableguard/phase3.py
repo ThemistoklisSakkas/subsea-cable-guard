@@ -237,3 +237,10 @@ def write_aggregates(alerts: pl.DataFrame, cases: pl.DataFrame, tables_dir) -> N
     (cases.with_columns(band=(pl.col("case_score") * 10).floor() / 10)
      .group_by("band").agg(pl.len().alias("cases")).sort("band")
      .write_csv(tables_dir / "case_score_distribution.csv"))
+
+
+def top_cases(cases: pl.DataFrame, n: int) -> pl.DataFrame:
+    """Highest-scoring flagged cases for reading on screen: no vessel identifier."""
+    return (cases.filter(pl.col("flagged")).sort("case_score", descending=True).head(n)
+            .select(pl.col("day").cast(pl.Utf8), pl.col("case_score").round(2), "ship_type",
+                    pl.col("rules").list.join("+"), "explanation"))
