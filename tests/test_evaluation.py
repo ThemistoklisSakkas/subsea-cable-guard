@@ -34,6 +34,8 @@ from cableguard.synthetic import (
 
 CFG = load_config()
 EV, RC = CFG["evaluation"], CFG["rules"]
+RC["loiter"]["min_duration_min"] = 20      # fixed for the tests, independent of tuning
+RC["flag_threshold"] = 0.5
 CRS = "EPSG:25832"
 Y0 = 6_100_000.0
 BB = BBox(lat_min=54.0, lat_max=56.0, lon_min=8.0, lon_max=10.0)

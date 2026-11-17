@@ -224,3 +224,22 @@ data window (2025-06-02..06), so there is no qualitative case. Using a past inci
 a different data window and would conflict with the rule not to identify individual vessels.
 
 Figure: `outputs/denmark/figures/phase4_tradeoff.png`.
+
+### Chosen operating point (decision 2026-11-18)
+
+Operator budget **45 flagged cases per day** (whole Danish box), at the knee of the curve:
+**loiter >= 60 min, flag threshold 0.6**, now in `config/default.yaml`. Re-run with it:
+
+| Metric | Value |
+|---|---|
+| Flagged cases per day (real traffic) | 44.4 (222 cases, 81 vessels, 5 days) |
+| Synthetic anchor drags detected (retrospective) | 74.0 % |
+| Synthetic loiters detected (retrospective) | 71.3 % |
+| Anchor drags alerted in real-time replay | 77.3 %, median 20 min after drag start (p90 40 min) |
+| Loiters alerted in real-time replay | 71.3 %, median 80 min (p90 105 min) |
+| Drags alerted before the drag started | 15 of 150 (anchored over the asset for up to 60 min first) |
+| Exposed vessels flagged: all / fishing / ferries / crossing-only | 1.9 % / 7.6 % / 1.8 % / 0 % |
+
+Real-time replay detects slightly more drags than the retrospective score (77 % vs 74 %): for a
+few tracks the visit statistics change as more fixes arrive (e.g. speed spread grows) and the
+final score drops below the threshold - a live system would already have alerted.

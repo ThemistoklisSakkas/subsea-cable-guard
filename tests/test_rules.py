@@ -17,6 +17,10 @@ from cableguard.rules import (
 from cableguard.zones import in_anchorage, in_port
 
 RC = load_config()["rules"]
+# Pin the parameters these tests were written for, so tuning the configuration
+# (Phase 4 operating point) does not change what the unit tests check.
+RC["loiter"]["min_duration_min"] = 20
+RC["flag_threshold"] = 0.5
 T0 = datetime(2025, 6, 2, 8, tzinfo=UTC)
 
 
