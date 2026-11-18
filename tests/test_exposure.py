@@ -189,3 +189,18 @@ def test_fast_approach_and_slow_drag_are_separate_visits(layer, params):
     drag = v.sort("start").row(1, named=True)
     assert drag["sog_median"] == pytest.approx(2.5, abs=0.1)
     assert drag["duration_s"] >= 85 * 60
+
+
+def test_tied_feature_assignment_is_deterministic(params):
+    """A visit equally close to two cables must always get the same feature (reproducibility)."""
+    two = gpd.GeoDataFrame(
+        {"asset_type": ["power", "power"], "source": ["emodnet"] * 2, "source_layer": ["x"] * 2,
+         "source_id": ["b-cable", "a-cable"], "accuracy": ["surveyed"] * 2,
+         "length_km": [20.0, 20.0]},
+        geometry=[LineString([(500_000, Y0 - 400), (520_000, Y0 - 400)]),
+                  LineString([(500_000, Y0 + 400), (520_000, Y0 + 400)])], crs=CRS)
+    # two fixes nearer each cable: the mode is tied
+    raw = track(1, [505_000] * 4, [Y0 - 300, Y0 - 200, Y0 + 200, Y0 + 300], 600, 0.2, 0)
+    feats = {run_scenario(two, params, raw).filter(pl.col("buffer_nm") == 1.0)["feature"][0]
+             for _ in range(10)}
+    assert feats == {"a-cable"}

@@ -243,3 +243,12 @@ Operator budget **45 flagged cases per day** (whole Danish box), at the knee of 
 Real-time replay detects slightly more drags than the retrospective score (77 % vs 74 %): for a
 few tracks the visit statistics change as more fixes arrive (e.g. speed spread grows) and the
 final score drops below the threshold - a live system would already have alerted.
+
+### Reproduction check (2026-11-18)
+
+An independent re-run of Phases 2-4 by the owner reproduced every headline number
+(44.4 cases/day, 74.0 % / 71.3 % detection, 20 min median time-to-alert). One count differed
+by one: repeated-passes alerts 1,082 vs 1,081. Cause: `mode()` returns tied values in arbitrary
+order, so a visit equally close to two assets could be assigned either one; and a `unique()`
+without `keep` picked an arbitrary row. Both tie-breaks are now deterministic (sorted mode,
+`keep="first"`), with a regression test; two runs on the same bucket are now identical.

@@ -220,7 +220,7 @@ def score(v: pl.DataFrame, cand: pl.DataFrame, g_alerts: pl.DataFrame | None,
                        rule_repeated_passes(v, rc)) if a.height]
     ctx_cols = ["mmsi", "start", "ship_type", "length_m", "depth_m", "in_port", "in_anchorage",
                 "in_windfarm"]
-    keyed = v.select(*ctx_cols).unique(subset=["mmsi", "start"])
+    keyed = v.select(*ctx_cols).unique(subset=["mmsi", "start"], keep="first", maintain_order=True)
     parts = []
     if raw:
         vis = pl.concat(raw, how="diagonal_relaxed")

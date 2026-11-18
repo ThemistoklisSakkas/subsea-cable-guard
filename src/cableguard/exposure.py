@@ -186,6 +186,8 @@ def build_visits(df: pl.DataFrame, near: pl.DataFrame, ctx: ExposureContext,
         anchored=pl.col("nav_status").cast(pl.Utf8).is_in(list(p.anchored_statuses)),
         angle_to_asset=pl.col("angle_to_asset").fill_nan(None),
     )
+    # mode() returns tied values in arbitrary order: sort before first() so that a visit
+    # equally close to two assets is always assigned the same one (reproducibility).
     visits = pts.group_by("visit", maintain_order=True).agg(
         pl.col("mmsi").first(), pl.col("seg").first(),
         pl.col("asset_type").first(), pl.col("buffer_nm").first(),
@@ -195,12 +197,12 @@ def build_visits(df: pl.DataFrame, near: pl.DataFrame, ctx: ExposureContext,
         pl.col("sog").median().alias("sog_median"), pl.col("sog").mean().alias("sog_mean"),
         pl.col("sog").min().alias("sog_min"), pl.col("sog").max().alias("sog_max"),
         pl.col("dist_m").min().alias("min_dist_m"),
-        pl.col("feature").mode().first().alias("feature"),
+        pl.col("feature").mode().sort().first().alias("feature"),
         pl.col("feature").n_unique().alias("n_features"),
         pl.col("angle_to_asset").median().alias("angle_to_asset_median"),
         pl.col("hdg_cog").median().alias("hdg_cog_diff_median"),
         pl.col("anchored").mean().alias("anchored_frac"),
-        pl.col("nav_status").cast(pl.Utf8).mode().first().alias("nav_status_mode"),
+        pl.col("nav_status").cast(pl.Utf8).mode().sort().first().alias("nav_status_mode"),
         pl.col("dt_prev_s").slice(1).max().alias("max_gap_s"),
         pl.col("dist_prev_m").slice(1).sum().alias("path_m"),
         pl.col("lat").median().alias("lat_median"), pl.col("lon").median().alias("lon_median"),
