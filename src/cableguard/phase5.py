@@ -136,9 +136,11 @@ def run(cfg: dict[str, Any], region: Region) -> dict[str, Any]:
         "anomaly", descending=True).head(int(round(rules_per_day * n_days)))
     lead = [r.split(" unusually")[0] for r in model.explain(top_real, top=1)]
     reasons = pl.DataFrame({"leading_feature": lead}).group_by("leading_feature").agg(
-        pl.len().alias("top_visits")).sort("top_visits", descending=True)
-    flagged_types = top_real.group_by("ship_type").agg(pl.len().alias("visits")).sort(
-        "visits", descending=True).head(6)
+        pl.len().alias("top_visits")).sort(["top_visits", "leading_feature"],
+                                            descending=[True, False])
+    flagged_types = (top_real.group_by("ship_type").agg(pl.len().alias("visits"))
+                     .sort(["visits", "ship_type"], descending=[True, False],
+                           nulls_last=True).head(6))
 
     paths.tables.mkdir(parents=True, exist_ok=True)
     equal.with_columns(pl.selectors.float().round(3)).write_csv(
