@@ -252,3 +252,42 @@ by one: repeated-passes alerts 1,082 vs 1,081. Cause: `mode()` returns tied valu
 order, so a visit equally close to two assets could be assigned either one; and a `unique()`
 without `keep` picked an arbitrary row. Both tie-breaks are now deterministic (sorted mode,
 `keep="first"`), with a regression test; two runs on the same bucket are now identical.
+
+## Phase 5 - Optional ML layer (Isolation Forest)
+
+Trained on 45,276 real visits (1 nm, outside ports, anchorages, operating wind farms);
+same synthetic tracks as Phase 4 (vessel types/lengths regenerated from the seed and checked
+identical). Tests: 113 passed.
+
+**1. Alone, at equal alarm load** (`phase5_equal_load.csv`):
+
+| Cases/day | Rules: drag | Model: drag | Rules: loiter | Model: loiter |
+|---|---|---|---|---|
+| 20 | 41 % | 5 % | 45 % | 9 % |
+| 45 | 74 % | 20 % | 72 % | 32 % |
+| 120 | 89 % | 43 % | 87 % | 61 % |
+
+**2. Marginal value of extra alarms** (`phase5_marginal.csv`): giving the model E extra cases per
+day on top of the rules' 44.4, versus spending them on a lower rules threshold:
+
+| Extra/day | Rules + model (drag / loiter) | Rules, lower threshold (drag / loiter) | Gain (pp, mean) |
+|---|---|---|---|
+| +5 | 74.0 % / 71.3 % | 74.5 % / 72.8 % | -1.0 |
+| +10 | 74.0 % / 71.3 % | 75.0 % / 74.3 % | -2.0 |
+| +20 | 75.3 % / 72.7 % | 77.5 % / 77.5 % | -3.5 |
+
+**3. Overlap at 44.4 cases/day** (150 tracks each): drag - both 27, rules only 84, model only 3,
+neither 36; loiter - both 42, rules only 65, model only 5, neither 38.
+
+**What the model flags in real traffic** (top 222 visits, the same count as the rules' cases):
+leading reason *share 'at anchor'* (142), *median speed* (61), *duration* (16); ship types
+cargo 48, high-speed craft 45, passenger 40 - i.e. statistically rare but mostly routine
+behaviour (ferries manoeuvring at terminals outside the World Port Index radius).
+
+**Decision: drop.** The model finds rare behaviour, not risky behaviour: it has no notion of
+which vessels can damage a cable (type, length), where an anchor reaches the seabed (depth in
+context), or what an anchor drag looks like. The rules encode exactly that domain knowledge.
+At every extra alarm budget it is better to lower the rules' threshold than to add the model.
+The experiment, its code and tests stay in the repository; the model is not used for alerts.
+
+Figure: `outputs/denmark/figures/phase5_ml_vs_rules.png`.

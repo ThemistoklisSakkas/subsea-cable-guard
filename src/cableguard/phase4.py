@@ -42,6 +42,7 @@ def run(cfg: dict[str, Any], region: Region) -> dict[str, Any]:
     out.mkdir(parents=True, exist_ok=True)
     pts.write_parquet(out / "synthetic_points.parquet")
     truth.write_parquet(out / "synthetic_truth.parquet")
+    ves.write_parquet(out / "synthetic_vessels.parquet")
     rctx_syn = replace_vessels(rctx, ves)
     log.info("synthetic: %d tracks, %d fixes", truth.height, pts.height)
 

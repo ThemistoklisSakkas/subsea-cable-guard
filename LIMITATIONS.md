@@ -76,3 +76,12 @@
 - **AIS-gap rule (R3) is not evaluated** with synthetic tracks (gaps come from the previous
   project's segmentation).
 - Five days of June traffic; seasonal patterns (fishing, leisure) will shift the alarm load.
+
+## ML layer (Phase 5)
+
+- Only one unsupervised model (Isolation Forest, visit-level features) was tried; a
+  context-aware or semi-supervised model trained on synthetic events might do better, but
+  would share the generator's assumptions (Phase 4) and lose the explanation-by-rule.
+- The comparison uses the same synthetic set the rules were tuned on, which favours the
+  rules; the margin (about 3x the detection at equal load) is too large to be explained by
+  that alone.

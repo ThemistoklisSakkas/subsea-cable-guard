@@ -16,7 +16,7 @@ transferred to the Aegean and Eastern Mediterranean as a case study.
 | 2 | Exposure per vessel track | Denmark done; Eastern Med pending |
 | 3 | Rule-based risk behaviours + explainable score | Denmark done (thresholds untuned) |
 | 4 | Evaluation without labels (synthetic injection, false-alarm rate) | Denmark done |
-| 5 | Optional unsupervised ML comparison | - |
+| 5 | Optional unsupervised ML comparison | Denmark done - model dropped (no added value) |
 | 6 | Regional transfer + receiver-coverage model | - |
 | 7 | Streamlit dashboard, demo | - |
 
@@ -169,6 +169,21 @@ every context factor. All weights are in `config/default.yaml`; Phase 4 tunes th
 - **Trade-off**: flag threshold 0.3-0.9 x loiter duration 20-90 min. The operating point is
   the highest mean detection within an operator budget of 20 flagged cases per day.
   It is reported, not written into the configuration automatically.
+
+## Phase 5 - Optional ML layer (result: not kept)
+
+```powershell
+.venv\Scripts\python.exe -m cableguard phase5 --region denmark
+```
+
+An Isolation Forest (seed 42, 300 trees) is trained on the 45,276 real 1 nm visits outside
+ports, anchorages and wind farms, on 11 features (duration, speeds, straightness, angle to the
+asset, heading/COG difference, share *at anchor*, distance, depth, length, reporting gap).
+Each anomalous visit is explained by its most extreme features. It is compared with the rules
+on the Phase 4 synthetic tracks and real traffic: (1) alone at equal alarm load, (2) as a
+filler for extra alarms versus simply lowering the rules' threshold. Decision rule: keep only
+if it wins (2) by >= 2 percentage points. It did not; the code stays as a documented experiment
+and is not part of the alert pipeline.
 
 ## Documentation
 

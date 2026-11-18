@@ -276,3 +276,43 @@ def tradeoff_figure(table: pl.DataFrame, tta: pl.DataFrame, op: dict, budget: fl
     fig.savefig(out, bbox_inches="tight", facecolor=SURFACE)
     plt.close(fig)
     return out
+
+
+def ml_comparison_figure(curve: pl.DataFrame, equal: pl.DataFrame, marginal: pl.DataFrame,
+                         rules_per_day: float, out: Path) -> Path:
+    """Rules vs. Isolation Forest at equal load, and rules + model for extra alarms."""
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.6), dpi=150, facecolor=SURFACE,
+                             layout="constrained")
+    for ax, sc, title in ((axes[0], "anchor_drag", "Anchor-drag tracks"),
+                          (axes[1], "loiter", "Loiter tracks")):
+        ax.set_facecolor(SURFACE)
+        ax.plot(curve["alarms_per_day"], curve[f"det_{sc}"], color=SWEEP_COLORS[0],
+                marker="o", ms=5, lw=1.8, label="Rules (threshold sweep)")
+        ax.plot(equal["cases_per_day"], equal[f"ml_{sc}"], color=SWEEP_COLORS[1], marker="s",
+                ms=5, lw=1.8, label="Isolation Forest alone")
+        ax.plot(marginal["total_per_day"], marginal[f"union_{sc}"], color=SWEEP_COLORS[2],
+                marker="^", ms=8, ls="none", label="Rules + model for extra cases")
+        for row in marginal.iter_rows(named=True):
+            ax.annotate(f"+{row['extra_per_day']}", (row["total_per_day"], row[f"union_{sc}"]),
+                        textcoords="offset points", xytext=(4, -10), fontsize=7, color=INK_2)
+        ax.axvline(rules_per_day, color=MUTED, ls="--", lw=1)
+        ax.text(rules_per_day, 0.97, " operating point", color=INK_2, fontsize=7, va="top")
+        ax.set_xscale("log")
+        ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:g}"))
+        ax.xaxis.set_minor_formatter(matplotlib.ticker.FuncFormatter(
+            lambda x, _: f"{x:g}" if x in (20, 30, 50, 70) else ""))
+        ax.set_ylim(0, 1.02)
+        ax.set_xlabel("Flagged cases per day, real traffic (log)", color=INK_2)
+        ax.set_title(title, loc="left", color=INK, fontsize=11)
+        ax.grid(color="#e9e8e4", lw=0.6)
+        ax.tick_params(colors=MUTED, labelsize=8)
+        for s in ("top", "right"):
+            ax.spines[s].set_visible(False)
+    axes[0].set_ylabel("Detection rate (synthetic)", color=INK_2)
+    axes[1].legend(fontsize=7, frameon=False, loc="lower right", labelcolor=INK)
+    fig.text(0.01, -0.03, "Same synthetic tracks and real traffic as Phase 4. Real-traffic "
+             "alarms are an upper bound on false alarms.", color=MUTED, fontsize=7)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, bbox_inches="tight", facecolor=SURFACE)
+    plt.close(fig)
+    return out

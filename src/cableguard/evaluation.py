@@ -42,9 +42,9 @@ def with_loiter(rc: dict[str, Any], minutes: float) -> dict[str, Any]:
 
 # ------------------------------------------------------------------ scoring synthetic tracks
 
-def score_points(points: pl.DataFrame, rctx: RuleContext, ectx: ExposureContext,
-                 p: ExposureParams, rc: dict[str, Any], crs: str) -> pl.DataFrame:
-    """Cases for an arbitrary set of fixes (Phase 2 + 3, nothing changed)."""
+def points_to_visits(points: pl.DataFrame, rctx: RuleContext, ectx: ExposureContext,
+                     p: ExposureParams, rc: dict[str, Any], crs: str) -> pl.DataFrame:
+    """Prepared alert-buffer visits for an arbitrary set of fixes (Phase 2 + context)."""
     if points.is_empty():
         return pl.DataFrame()
     df = (points.sort("mmsi", "ts").with_row_index("gid")
@@ -57,7 +57,13 @@ def score_points(points: pl.DataFrame, rctx: RuleContext, ectx: ExposureContext,
                                      v_all["lat_median"].to_numpy())
              if rctx.depth_tif.exists() else np.full(v_all.height, np.nan))
     v_all = v_all.with_columns(depth_m=pl.Series(depth).fill_nan(None))
-    v = prepare_visits(v_all, rctx, rc)
+    return prepare_visits(v_all, rctx, rc)
+
+
+def score_points(points: pl.DataFrame, rctx: RuleContext, ectx: ExposureContext,
+                 p: ExposureParams, rc: dict[str, Any], crs: str) -> pl.DataFrame:
+    """Cases for an arbitrary set of fixes (Phase 2 + 3, nothing changed)."""
+    v = points_to_visits(points, rctx, ectx, p, rc, crs)
     if v.is_empty():
         return pl.DataFrame()
     cand = drag_candidates(v, rc)
