@@ -26,7 +26,8 @@ Requires Python >= 3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```powershell
 uv venv --python 3.14 .venv
-uv pip install --python .venv\Scripts\python.exe -e ".[dev]"
+uv pip install --python .venv\Scripts\python.exe -e ".[dev,geo,ml,viz]"   # full analysis
+# the collector alone needs only ".[dev]"
 .venv\Scripts\python.exe -m pytest
 ```
 

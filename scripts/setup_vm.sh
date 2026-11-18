@@ -16,7 +16,8 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 export PATH="$HOME/.local/bin:$PATH"
 
-# 2. Python environment (core dependencies only: the collector needs no geo stack)
+# 2. Python environment: core dependencies only - the collector needs no geo/ML stack,
+#    which keeps the install small on a 1 GB machine.
 [ -d .venv ] || uv venv --python 3.13 .venv
 uv pip install --python .venv/bin/python -e ".[dev]"
 
@@ -31,8 +32,9 @@ if [ "$mem_kb" -lt 2000000 ] && ! swapon --show | grep -q /swapfile; then
     grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 fi
 
-# 4. Tests must pass before we trust it to run unattended
-.venv/bin/python -m pytest -q
+# 4. Collector tests must pass before we trust it to run unattended
+#    (the analysis tests need the geo/ML extras, which the VM does not install).
+.venv/bin/python -m pytest -q tests/test_config.py tests/test_messages.py tests/test_writer_compact.py tests/test_client.py
 
 # 5. systemd service: starts at boot, restarts 30 s after any crash
 sed -e "s#__USER__#$USER#g" -e "s#__DIR__#$REPO#g" scripts/cableguard-collector.service \
