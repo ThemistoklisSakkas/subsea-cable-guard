@@ -24,6 +24,22 @@ to the Aegean and Eastern Mediterranean is planned (Phase 6).
 - **Streamlit dashboard** with map, explained cases, track replay and a public-safe synthetic
   mode. Details and every metric: [RESULTS.md](RESULTS.md); limits: [LIMITATIONS.md](LIMITATIONS.md).
 
+![Subsea cables and pipelines with AIS traffic density, Danish waters](docs/figures/phase1_infrastructure_map.png)
+
+*Infrastructure layer (EMODnet + OpenStreetMap) over time-weighted AIS traffic density.*
+
+![Detection of synthetic events versus flagged cases per day, and time to alert](docs/figures/phase4_tradeoff.png)
+
+*Evaluation without labels: detection of 300 synthetic events against the alarm load on real
+traffic; the star is the chosen operating point (about 44 cases per day).*
+
+![Rules versus Isolation Forest at equal alarm load](docs/figures/phase5_ml_vs_rules.png)
+
+*The unsupervised model found rare, not risky, behaviour and was dropped.*
+
+More figures: [visit duration vs. speed](docs/figures/phase2_visits_1nm.png),
+[case scores and triggering rules](docs/figures/phase3_cases.png).
+
 ## Status
 
 | Phase | Content | Status |
@@ -258,5 +274,5 @@ Input: the DMA AIS tracks cleaned and segmented by the previous project
 
 ## Documentation
 
-[RESULTS.md](RESULTS.md) - metrics per phase | [LIMITATIONS.md](LIMITATIONS.md) |
+[RESULTS.md](RESULTS.md) - metrics per phase | [LIMITATIONS.md](LIMITATIONS.md) | [LICENSE](LICENSE) (MIT, code only) |
 [DATA_LICENSES.md](DATA_LICENSES.md) | [ETHICS.md](ETHICS.md)
