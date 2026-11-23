@@ -85,3 +85,10 @@
 - The comparison uses the same synthetic set the rules were tuned on, which favours the
   rules; the margin (about 3x the detection at equal load) is too large to be explained by
   that alone.
+
+## Dashboard (Phase 7)
+
+- A local analysis tool, not an operational system: no live feed, authentication or audit log.
+  It binds to localhost; real cases are pseudonymised but still internal (ETHICS rule 6).
+- Track replay is limited to flagged cases (one hour either side), to keep files small.
+- Base map: CARTO light tiles over OpenStreetMap data, loaded from the internet.

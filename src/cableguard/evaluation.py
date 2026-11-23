@@ -179,3 +179,26 @@ def breakdown(syn: pl.DataFrame, truth: pl.DataFrame, thr: float) -> pl.DataFram
 
 def replace_vessels(rctx: RuleContext, vessels: pl.DataFrame) -> RuleContext:
     return dataclasses.replace(rctx, vessels=vessels)
+
+
+def load_synthetic(ev_dir, cfg: dict[str, Any], region, rctx: RuleContext
+                   ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+    """Phase 4 synthetic (points, truth, vessels). Vessels are regenerated from the seed
+    if an older Phase 4 run did not save them, and checked to be the identical set."""
+    for f in ("synthetic_points.parquet", "synthetic_truth.parquet"):
+        if not (ev_dir / f).exists():
+            raise RuntimeError("run phase4 first (synthetic tracks are reused)")
+    pts = pl.read_parquet(ev_dir / "synthetic_points.parquet")
+    truth = pl.read_parquet(ev_dir / "synthetic_truth.parquet")
+    ves_path = ev_dir / "synthetic_vessels.parquet"
+    if ves_path.exists():
+        return pts, truth, pl.read_parquet(ves_path)
+    from cableguard import synthetic
+    _, ves, truth2 = synthetic.generate(rctx.layer, cfg["evaluation"], cfg["rules"],
+                                        cfg["infrastructure"], cfg["seed"], region.metric_crs,
+                                        region.bbox, rctx.depth_tif, rctx.ports, rctx.anch,
+                                        rctx.windfarm)
+    if truth2["mmsi"].to_list() != truth["mmsi"].to_list():
+        raise RuntimeError("synthetic set changed: re-run phase4")
+    ves.write_parquet(ves_path)
+    return pts, truth, ves

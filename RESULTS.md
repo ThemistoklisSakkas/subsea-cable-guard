@@ -291,3 +291,16 @@ At every extra alarm budget it is better to lower the rules' threshold than to a
 The experiment, its code and tests stay in the repository; the model is not used for alerts.
 
 Figure: `outputs/denmark/figures/phase5_ml_vs_rules.png`.
+
+## Phase 7 - Dashboard
+
+`dashboard-data` (34 s) wrote pseudonymised files: 377 synthetic cases (score >= 0.3) with
+139,630 track fixes, 570 real cases (222 flagged) with 981,289 fixes, 1,943 infrastructure
+paths, 111,232 density cells. A check confirmed that no file contains an MMSI column.
+
+Verification: every page in both modes and the pending-region page ran through the Streamlit
+agent API without exceptions or server warnings; an `AppTest` runs all pages in the test suite
+(121 tests). Browser review fixed: map zoom (deck.gl uses 512-px tiles), invisible cable lines
+(numpy arrays in a column are not serialised by pydeck), a washed-out density layer, truncated
+metric labels, and **local time instead of UTC** in the speed chart (a ship's events were shown
+three hours off) - now a UTC scale.

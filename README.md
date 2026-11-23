@@ -2,23 +2,40 @@
 
 AIS-based monitoring that **flags vessel behaviour posing a risk to undersea cables and
 pipelines for review by a human operator** (maritime security / critical-infrastructure
-protection). The method is developed and evaluated on Danish/Baltic AIS data, then
-transferred to the Aegean and Eastern Mediterranean as a case study.
+protection). The method is developed and evaluated on Danish/Baltic AIS data; the transfer
+to the Aegean and Eastern Mediterranean is planned (Phase 6).
 
 > Alerts are *flagged for review*, never accusations. See [ETHICS.md](ETHICS.md).
+
+## Results at a glance (Denmark, DMA AIS 2025-06-02..06)
+
+- **20,382 km** of mapped cables and pipelines (EMODnet + OpenStreetMap), 48.7 M AIS fixes,
+  100k+ visits to 0.5/1/2 nm buffers; state vessels excluded.
+- Four explainable rules (loiter, anchor-drag signature, AIS gap near asset, repeated passes)
+  scaled by ship type, length, depth and zone; every flag carries a plain-language reason.
+- Evaluated without labels on **300 synthetic events** injected into the real geography:
+  at the chosen operating point (**~44 flagged cases/day**) **74 %** of anchor drags and
+  **71 %** of loiters are flagged, drags **20 min** (median) after they start;
+  **0 %** of vessels that only cross assets are flagged.
+- The evaluation found and fixed two pipeline defects (a fast approach hid a slow drag; regime
+  pieces counted as repeated passes); an independent re-run reproduced every number.
+- An **Isolation Forest was tested and dropped**: 20 % vs 74 % drag detection at equal load, and
+  extra alarms were better spent on the rules - a criterion fixed before the experiment.
+- **Streamlit dashboard** with map, explained cases, track replay and a public-safe synthetic
+  mode. Details and every metric: [RESULTS.md](RESULTS.md); limits: [LIMITATIONS.md](LIMITATIONS.md).
 
 ## Status
 
 | Phase | Content | Status |
 |---|---|---|
-| 0 | Real-time AIS collector (aisstream.io -> daily Parquet) | code done; deployment pending |
-| 1 | Infrastructure layer (EMODnet + OSM cables/pipelines, buffers, density map) | Denmark done; Eastern Med pending |
-| 2 | Exposure per vessel track | Denmark done; Eastern Med pending |
-| 3 | Rule-based risk behaviours + explainable score | Denmark done (thresholds untuned) |
+| 0 | Real-time AIS collector (aisstream.io -> daily Parquet) | code and tests done; deployment with Phase 6 |
+| 1 | Infrastructure layer (EMODnet + OSM cables/pipelines, buffers, density map) | Denmark done |
+| 2 | Exposure per vessel track | Denmark done |
+| 3 | Rule-based risk behaviours + explainable score | Denmark done (tuned in Phase 4) |
 | 4 | Evaluation without labels (synthetic injection, false-alarm rate) | Denmark done |
 | 5 | Optional unsupervised ML comparison | Denmark done - model dropped (no added value) |
-| 6 | Regional transfer + receiver-coverage model | - |
-| 7 | Streamlit dashboard, demo | - |
+| 6 | Regional transfer + receiver-coverage model (Aegean, Ionian, Eastern Med) | planned |
+| 7 | Streamlit dashboard, demo | done (Denmark) |
 
 ## Setup
 
@@ -185,6 +202,59 @@ on the Phase 4 synthetic tracks and real traffic: (1) alone at equal alarm load,
 filler for extra alarms versus simply lowering the rules' threshold. Decision rule: keep only
 if it wins (2) by >= 2 percentage points. It did not; the code stays as a documented experiment
 and is not part of the alert pipeline.
+
+## Phase 7 - Dashboard
+
+```powershell
+.venv\Scripts\python.exe -m cableguard dashboard-data --region denmark   # pseudonymised data
+.venv\Scripts\streamlit.exe run app/streamlit_app.py                    # http://localhost:8501
+```
+
+- **Overview**: key numbers, map of cables/pipelines (by type), 1 nm buffers, traffic density
+  and cases.
+- **Cases**: filter by rule and asset; each case shows why it was flagged (every alert and
+  context factor) and a **track replay** with a time slider and a speed chart in UTC.
+- **Evaluation**: trade-off curve, time to alert, rules vs. Isolation Forest.
+- **Method and ethics**.
+- Two modes: **Synthetic demo** (Phase 4 tracks with ground truth; safe for screenshots and the
+  video) and **Real cases** (internal review only, with a warning banner).
+- MMSIs never reach the app: `dashboard-data` replaces them with keyed pseudonyms
+  (HMAC-SHA256 with the secret `MMSI_HASH_SALT`, or a private random salt in `data/`).
+- The app binds to localhost only (`.streamlit/config.toml`).
+- Demo video script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+
+## Planned - Phase 6: Aegean, Ionian and Eastern Mediterranean
+
+The collector (Phase 0) and the Oracle/Linux VM scripts are ready; the case study starts
+once several weeks of data have been collected. Plan:
+
+1. **Receiver-coverage model**: from the collected stream, where and when positions are
+   normally received (cell x hour), so the tool reports "coverage gap" and "AIS switched off"
+   separately - terrestrial volunteer receivers leave holes south of Crete and offshore.
+2. **Infrastructure data gap**: EMODnet holds no pipelines and only 11 telecom features in the
+   region box (vs. 222 in Denmark); OSM adds 87 ways. Options: TeleGeography (non-commercial,
+   schematic - 2 nm buffer only) and national sources; the gap itself is a finding.
+3. **Transfer**: the same pipeline (cleaning via the previous project's loader), the Danish
+   operating point first, then a comparison of alarm load and behaviour between regions and an
+   explanation of what had to change (thresholds, coverage, traffic patterns such as ferries
+   and anchorages in the Saronic Gulf).
+4. All data, results and figures stay in `private/` (git-ignored) until the owner decides.
+
+## Reproduce everything (Denmark)
+
+```powershell
+.venv\Scripts\python.exe -m cableguard infra-fetch --region denmark
+.venv\Scripts\python.exe -m cableguard phase1 --region denmark
+.venv\Scripts\python.exe -m cableguard bathy-fetch --region denmark
+.venv\Scripts\python.exe -m cableguard phase2 --region denmark    # ~20 min
+.venv\Scripts\python.exe -m cableguard phase3 --region denmark
+.venv\Scripts\python.exe -m cableguard phase4 --region denmark    # ~5 min
+.venv\Scripts\python.exe -m cableguard phase5 --region denmark
+.venv\Scripts\python.exe -m cableguard dashboard-data --region denmark
+```
+
+Input: the DMA AIS tracks cleaned and segmented by the previous project
+(`maritime-ais-gnss`), read in place via `config/default.yaml`.
 
 ## Documentation
 

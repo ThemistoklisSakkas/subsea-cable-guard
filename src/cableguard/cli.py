@@ -26,7 +26,8 @@ def main(argv: list[str] | None = None) -> int:
                        ("phase2", "exposure of every track to the infrastructure"),
                        ("phase3", "risk rules, context factors and cases"),
                        ("phase4", "evaluation: synthetic injection, false alarms, trade-off"),
-                       ("phase5", "optional ML layer: Isolation Forest vs. the rules")]:
+                       ("phase5", "optional ML layer: Isolation Forest vs. the rules"),
+                       ("dashboard-data", "prepare pseudonymised data for the dashboard")]:
         sp = sub.add_parser(name, help=text)
         sp.add_argument("--region", required=True)
     cs = sub.add_parser("cases", help="print the top flagged cases (no vessel identities)")
@@ -52,10 +53,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd in ("infra-fetch", "phase1", "bathy-fetch", "phase2", "phase3", "phase4",
-                    "phase5"):
+                    "phase5", "dashboard-data"):
         import json
 
-        from cableguard import phase1, phase2, phase3, phase4, phase5
+        from cableguard import dashboard_data, phase1, phase2, phase3, phase4, phase5
         from cableguard.regions import get_region
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
         region = get_region(cfg, args.region)
@@ -71,8 +72,10 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(phase3.run(cfg, region), indent=2, default=str))
         elif args.cmd == "phase4":
             print(json.dumps(phase4.run(cfg, region), indent=2, default=str))
-        else:
+        elif args.cmd == "phase5":
             print(json.dumps(phase5.run(cfg, region), indent=2, default=str))
+        else:
+            print(json.dumps(dashboard_data.build(cfg, region), indent=2, default=str))
         return 0
 
     ccfg = collector_config(cfg)

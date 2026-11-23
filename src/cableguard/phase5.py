@@ -16,7 +16,13 @@ from typing import Any
 import numpy as np
 import polars as pl
 
-from cableguard.evaluation import max_scores, points_to_visits, replace_vessels, score_points
+from cableguard.evaluation import (
+    load_synthetic,
+    max_scores,
+    points_to_visits,
+    replace_vessels,
+    score_points,
+)
 from cableguard.exposure import ExposureContext, ExposureParams
 from cableguard.ml import AnomalyModel, case_scores, outside_zones, threshold_for_budget
 from cableguard.phase3 import load_rule_context, prepare_visits
@@ -40,13 +46,9 @@ def run(cfg: dict[str, Any], region: Region) -> dict[str, Any]:
     paths = region.paths
     crs = region.metric_crs
     ev_dir = paths.exposure.parent / "evaluation"
-    for f in ("synthetic_points.parquet", "synthetic_truth.parquet"):
-        if not (ev_dir / f).exists():
-            raise RuntimeError("run phase4 first (synthetic tracks are reused)")
-    pts = pl.read_parquet(ev_dir / "synthetic_points.parquet")
-    truth = pl.read_parquet(ev_dir / "synthetic_truth.parquet")
     rctx = load_rule_context(cfg, region)
     ectx = ExposureContext(rctx.layer, p)
+    pts, truth, ves = load_synthetic(ev_dir, cfg, region, rctx)
 
     # ---- real visits outside ports, anchorages, wind farms: training and alarm load
     v_real = prepare_visits(pl.read_parquet(paths.exposure / "visits.parquet"), rctx, rc)
@@ -57,17 +59,6 @@ def run(cfg: dict[str, Any], region: Region) -> dict[str, Any]:
     log.info("model trained on %d real visits; %d real cases", v_real.height, real_cases.height)
 
     # ---- synthetic visits (same pipeline) scored by the model
-    ves_path = ev_dir / "synthetic_vessels.parquet"
-    if ves_path.exists():
-        ves = pl.read_parquet(ves_path)
-    else:   # older Phase 4 output: regenerate the identical set from the seed
-        from cableguard import synthetic
-        _, ves, truth2 = synthetic.generate(rctx.layer, cfg["evaluation"], rc,
-                                            cfg["infrastructure"], cfg["seed"], crs,
-                                            region.bbox, rctx.depth_tif, rctx.ports,
-                                            rctx.anch, rctx.windfarm)
-        if truth2["mmsi"].to_list() != truth["mmsi"].to_list():
-            raise RuntimeError("synthetic set changed: re-run phase4")
     rctx_syn = replace_vessels(rctx, ves)
     v_syn = points_to_visits(pts, rctx_syn, ectx, p, rc, crs)
     v_syn = v_syn.filter(outside_zones(v_syn))

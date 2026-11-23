@@ -8,7 +8,8 @@
 | EMODnet Human Activities wind farms (polygons) | Context: operating wind farms | CC BY 4.0 | No |
 | World Port Index (via previous project) | Context: port areas | Public domain (US NGA) | No |
 | OpenStreetMap (Overpass API) submarine cables and pipelines | Infrastructure layer (community accuracy) | ODbL 1.0, attribution "(c) OpenStreetMap contributors"; derived databases must stay ODbL | No raw data; figures carry attribution |
-| Natural Earth 10 m land | Map background | Public domain | No |
+| Natural Earth 10 m land | Map background (report figures) | Public domain | No |
+| CARTO basemap tiles (OpenStreetMap data) | Dashboard background map | (c) OpenStreetMap contributors, (c) CARTO - attribution shown on the map | No |
 | TeleGeography Submarine Cable Map | Optional visual reference only | CC BY-NC-SA 3.0 (non-commercial) | No |
 | EMODnet Bathymetry DTM (WCS `emodnet__mean`) | Water depth at each visit | CC BY 4.0 | No |
 | GEBCO gridded bathymetry | Not used (EMODnet Bathymetry covers both regions) | GEBCO terms | No |
