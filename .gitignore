@@ -22,3 +22,6 @@ private/*
 outputs/
 *.parquet
 *.log
+
+# Local editor/agent settings
+.claude/

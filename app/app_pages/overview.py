@@ -35,25 +35,25 @@ if not available(region):
 
 s = summary(region)
 km = sum(s["infra_km"].values())
-m = st.columns(5)
-with m[0]:
-    st.metric("Mapped assets", f"{km / 1000:.1f}k km", border=True,
-              help="Mapped cables and pipelines (EMODnet + OpenStreetMap); lengths of "
-                   "overlapping sources are not merged.")
-with m[1]:
-    st.metric("Flags per day", f"{s['flagged_per_day']:.1f}", border=True,
-              help=f"Real traffic, threshold {s['flag_threshold']}, loiter >= "
-                   f"{s['loiter_min']} min. Upper bound on false alarms.")
-with m[2]:
-    st.metric("Drags detected", f"{100 * s['det_anchor_drag']:.0f} %", border=True,
-              help="Synthetic anchor-drag tracks at the operating point (Phase 4).")
-with m[3]:
-    st.metric("Time to alert", f"{s['tta_drag_median_min']:.0f} min", border=True,
-              help="Median minutes from the start of a synthetic anchor drag to the first flag.")
-with m[4]:
-    st.metric("Crossers flagged", f"{100 * s['far_crossing_only']:.1f} %", border=True,
-              help="Share of vessels that only crossed assets and were flagged: the rules "
-                   "react to behaviour, not presence.")
+KPIS = [
+    ("Mapped assets", f"{km / 1000:.1f}k km",
+     "Mapped cables and pipelines (EMODnet + OpenStreetMap); lengths of overlapping "
+     "sources are not merged."),
+    ("Flags per day", f"{s['flagged_per_day']:.1f}",
+     f"Real traffic, threshold {s['flag_threshold']}, loiter >= {s['loiter_min']} min. "
+     "Upper bound on false alarms."),
+    ("Drags detected", f"{100 * s['det_anchor_drag']:.0f} %",
+     "Synthetic anchor-drag tracks at the operating point (Phase 4)."),
+    ("Time to alert", f"{s['tta_drag_median_min']:.0f} min",
+     "Median minutes from the start of a synthetic anchor drag to the first flag."),
+    ("Crossers flagged", f"{100 * s['far_crossing_only']:.1f} %",
+     "Share of vessels that only crossed assets and were flagged: the rules react to "
+     "behaviour, not presence."),
+]
+# The grid drops to fewer columns on narrow screens instead of truncating the numbers.
+with st.grid(5, min_column_width=150):
+    for label, value, tip in KPIS:
+        st.metric(label, value, help=tip, border=True, height="stretch")
 
 layers_on = st.pills("Layers", ["Traffic density", "1 nm buffers", "Cases"],
                      selection_mode="multi", default=["Traffic density", "Cases"],
